@@ -11,7 +11,7 @@ async fn main() {
 
     let msg = msg.encode_to_vec();
     println!("{:?}", msg);
-    let request = rspc::protocol::RequestMsg::new(54, 1, msg.len() as u32, msg);
+    let request = rspc::protocol::RequestMsg::new(54, 1, msg.len() as u32, msg.into());
     println!("{:?}", request);
     let header = request.encode_header();
 

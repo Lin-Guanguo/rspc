@@ -36,8 +36,9 @@ impl Server {
         let mut header_buf = [0u8; protocol::REQUEST_HEADER_BYTES];
         tcp.read_exact(&mut header_buf).await?;
         let mut request = protocol::RequestMsg::decode_header(&header_buf);
-        request.msg_body = vec![0; request.body_len as usize];
-        tcp.read_exact(&mut request.msg_body[0..]).await?;
+        let mut bytesMut = bytes::BytesMut::with_capacity(request.body_len as usize);
+        tcp.read_exact(&mut bytesMut).await?;
+        request.msg_body = bytesMut.into();
 
         println!("server read request body: {:?}", request);
         Ok(())

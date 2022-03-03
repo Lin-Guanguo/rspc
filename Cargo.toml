@@ -17,6 +17,7 @@ prost = "0.9"
 tokio = { version = "1", features = ["full"]}
 thiserror = "1"
 byteorder = "1"
+bytes = "1"
 
 [build-dependencies]
 prost-build = "0.9"
