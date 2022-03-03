@@ -1,6 +1,6 @@
-mod client;
+pub mod client;
 mod protocol;
-mod server;
+pub mod server;
 
 #[cfg(test)]
 mod tests {
