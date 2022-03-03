@@ -3,7 +3,8 @@ mod error;
 use error::ServerError;
 use tokio::net;
 
-struct Server {
+#[derive(Debug)]
+pub struct Server {
     port: i32,
 }
 

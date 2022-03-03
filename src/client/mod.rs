@@ -3,10 +3,15 @@ mod error;
 use error::ClientError;
 use tokio::net;
 
-struct Client {}
+#[derive(Debug)]
+pub struct ClientChannel {
+    tcp: net::TcpStream,
+}
 
-impl Client {
-    pub fn new() -> Client {
-        Client {}
+impl ClientChannel {
+    pub async fn new<A: net::ToSocketAddrs>(addr: A) -> Result<ClientChannel, ClientError> {
+        let tcp = net::TcpStream::connect(addr).await?;
+        println!("connect");
+        Ok(ClientChannel { tcp })
     }
 }
