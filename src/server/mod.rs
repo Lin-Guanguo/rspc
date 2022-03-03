@@ -1,7 +1,9 @@
 mod error;
 
 use error::ServerError;
-use tokio::net;
+use tokio::{io::AsyncReadExt, net};
+
+use crate::protocol;
 
 #[derive(Debug)]
 pub struct Server {
@@ -30,6 +32,14 @@ impl Server {
     }
 
     async fn handle_channel(tcp: net::TcpStream) -> Result<(), ServerError> {
+        let mut tcp = tcp;
+        let mut header_buf = [0u8; protocol::REQUEST_HEADER_BYTES];
+        tcp.read_exact(&mut header_buf).await?;
+        let mut request = protocol::RequestMsg::decode_header(&header_buf);
+        request.msg_body = vec![0; request.body_len as usize];
+        tcp.read_exact(&mut request.msg_body[0..]).await?;
+
+        println!("server read request body: {:?}", request);
         Ok(())
     }
 }

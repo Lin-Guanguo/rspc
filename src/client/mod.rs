@@ -5,7 +5,8 @@ use tokio::net;
 
 #[derive(Debug)]
 pub struct ClientChannel {
-    tcp: net::TcpStream,
+    // TODO: remove pub
+    pub tcp: net::TcpStream,
 }
 
 impl ClientChannel {
