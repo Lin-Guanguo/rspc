@@ -1,3 +1,7 @@
+mod client;
+mod protocol;
+mod server;
+
 #[cfg(test)]
 mod tests {
     #[test]

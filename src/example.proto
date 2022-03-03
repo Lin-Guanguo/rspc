@@ -1,10 +1,13 @@
 
 syntax = "proto3";
 
+package rspc.hello;
+
 message HelloRequest {
     string name = 1;
 }
 
 message HelloReply {
     string msg = 1;
+    string time = 2;
 }
