@@ -1,7 +1,5 @@
 use byteorder::ByteOrder;
-use bytes::{Bytes, BytesMut};
-
-// channel transfer protocol
+use bytes::Bytes;
 
 // request header bytes
 pub const REQUEST_HEADER_BYTES: usize = 16;

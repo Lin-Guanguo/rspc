@@ -1,9 +1,8 @@
+use bytes::Bytes;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-
-use bytes::Bytes;
 
 pub type ServiceFn = fn(Bytes) -> (u32, Bytes);
 

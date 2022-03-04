@@ -3,21 +3,21 @@ use crate::protocol::*;
 use bytes::BytesMut;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net,
+    net::TcpStream,
     sync::mpsc,
     try_join,
 };
-use tracing::{debug, info, instrument, span, trace, Level};
+use tracing::{debug, instrument};
 
 const REPLY_BUF_SIZE: usize = 32;
 
 pub struct Channel {
-    tcp: net::TcpStream,
+    tcp: TcpStream,
     service_table: ServiceTable,
 }
 
 impl Channel {
-    pub fn new(tcp: net::TcpStream, service_table: ServiceTable) -> Self {
+    pub fn new(tcp: TcpStream, service_table: ServiceTable) -> Self {
         Self { tcp, service_table }
     }
 

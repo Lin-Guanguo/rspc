@@ -1,17 +1,18 @@
-mod error;
+pub mod error;
 
-use error::ClientError;
-use tokio::net;
+use tokio::net::{TcpStream, ToSocketAddrs};
+
+use self::error::ClientError;
 
 #[derive(Debug)]
 pub struct ClientChannel {
     // TODO: remove pub
-    pub tcp: net::TcpStream,
+    pub tcp: TcpStream,
 }
 
 impl ClientChannel {
-    pub async fn new<A: net::ToSocketAddrs>(addr: A) -> Result<ClientChannel, ClientError> {
-        let tcp = net::TcpStream::connect(addr).await?;
+    pub async fn new<A: ToSocketAddrs>(addr: A) -> Result<ClientChannel, ClientError> {
+        let tcp = TcpStream::connect(addr).await?;
         println!("connect");
         Ok(ClientChannel { tcp })
     }
