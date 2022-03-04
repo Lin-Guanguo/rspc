@@ -8,7 +8,8 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let server = rspc::server::Server::new(8080);
+    let mut server = rspc::server::Server::new(8080);
+    server.register_service(1, rspc::example::hello_service);
     let r = server.run().await;
     println!("{:?}", r);
 }

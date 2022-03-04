@@ -1,4 +1,4 @@
-use super::error::ServerError;
+use super::{error::ServerError, service::*};
 use crate::protocol::*;
 use bytes::BytesMut;
 use tokio::{
@@ -13,16 +13,22 @@ const REPLY_BUF_SIZE: usize = 32;
 
 pub struct Channel {
     tcp: net::TcpStream,
+    service_table: ServiceTable,
 }
 
 impl Channel {
-    pub fn new(tcp: net::TcpStream) -> Self {
-        Self { tcp }
+    pub fn new(tcp: net::TcpStream, service_table: ServiceTable) -> Self {
+        Self { tcp, service_table }
     }
 
     #[instrument(name="channel", skip_all, fields(peer=?self.tcp.peer_addr().unwrap()))]
-    pub async fn handle_channel(&mut self) -> Result<(), ServerError> {
-        let (read_half, write_half) = self.tcp.split();
+    pub async fn handle_channel(self) -> Result<(), ServerError> {
+        let Self {
+            mut tcp,
+            service_table,
+        } = self;
+
+        let (read_half, write_half) = tcp.split();
         let (reply_tx, reply_rx) = mpsc::channel(REPLY_BUF_SIZE);
 
         let read_handler = async move {
@@ -41,8 +47,13 @@ impl Channel {
                     body: body.into(),
                 };
 
-                tokio::spawn(Self::handle_request(request, reply_tx.clone()));
+                tokio::spawn(Self::handle_request(
+                    request,
+                    reply_tx.clone(),
+                    service_table.clone(),
+                ));
             }
+
             // TODO: special request id to exit
             Result::<(), ServerError>::Ok(())
         };
@@ -61,5 +72,25 @@ impl Channel {
         Ok(())
     }
 
-    pub async fn handle_request(request: RequestMsg, reply_tx: mpsc::Sender<ReplyMsg>) {}
+    #[instrument(name="request", skip_all, fields(reuqest_id=?request.header.request_id, method_id=?request.header.method_id))]
+    pub async fn handle_request(
+        request: RequestMsg,
+        reply_tx: mpsc::Sender<ReplyMsg>,
+        service_table: ServiceTable,
+    ) {
+        let lock = service_table.read().unwrap();
+        let service_fn = lock.get(&request.header.method_id);
+
+        debug!("call fn {:?}", service_fn);
+        if let Some(service_fn) = service_fn {
+            let ret = service_fn(request.body);
+            let reply = ReplyMsg {
+                header: ReplyHeader::new(request.header.request_id, ret.0, ret.1.len() as u32),
+                body: ret.1,
+            };
+            reply_tx.send(reply); // TODO: error check
+        } else {
+            todo!()
+        }
+    }
 }
