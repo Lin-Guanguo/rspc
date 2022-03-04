@@ -17,10 +17,22 @@ pub struct RequestHeader {
 }
 
 #[derive(Debug)]
+pub struct RequestMsg {
+    pub header: RequestHeader,
+    pub body: Bytes,
+}
+
+#[derive(Debug)]
 pub struct ReplyHeader {
     pub request_id: u64,
     pub status_code: u32,
     pub body_len: u32,
+}
+
+#[derive(Debug)]
+pub struct ReplyMsg {
+    pub header: ReplyHeader,
+    pub body: Bytes,
 }
 
 impl RequestHeader {
