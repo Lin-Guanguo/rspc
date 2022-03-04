@@ -73,7 +73,7 @@ impl Channel {
     }
 
     #[instrument(name="request", skip_all, fields(reuqest_id=?request.header.request_id, method_id=?request.header.method_id))]
-    pub async fn handle_request(
+    async fn handle_request(
         request: RequestMsg,
         reply_tx: mpsc::Sender<ReplyMsg>,
         service_table: ServiceTable,

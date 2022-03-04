@@ -26,3 +26,13 @@ impl HelloServer for HelloServerImpl {
         (0, reply.encode_to_vec().into())
     }
 }
+
+struct HelloServerStub {
+    // channel: Channel;
+}
+
+impl HelloServer for HelloServerStub {
+    fn hello_service(&mut self, reqeust: Bytes) -> (u32, Bytes) {
+        todo!()
+    }
+}
