@@ -2,20 +2,14 @@ mod channel;
 mod error;
 mod service;
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
+use tokio::net;
+use tracing::info;
+
+use self::{
+    error::ServerError,
+    service::{ServiceFn, ServiceTable},
 };
 
-use error::ServerError;
-use tokio::{io::AsyncReadExt, net};
-use tracing::{debug, info, span, trace, Level};
-
-use crate::protocol;
-
-use self::service::*;
-
-#[derive(Debug)]
 pub struct Server {
     port: i32,
     service_table: ServiceTable,
@@ -25,13 +19,12 @@ impl Server {
     pub fn new(port: i32) -> Server {
         Server {
             port,
-            service_table: Arc::new(RwLock::new(HashMap::new())),
+            service_table: ServiceTable::new(),
         }
     }
 
     pub fn register_service(&mut self, method_id: u32, service_fn: ServiceFn) {
-        let mut map = (*self.service_table).write().unwrap();
-        map.insert(method_id, service_fn);
+        self.service_table.insert(method_id, service_fn);
     }
 
     #[tracing::instrument(name = "server", skip_all)]

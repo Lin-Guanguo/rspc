@@ -78,8 +78,7 @@ impl Channel {
         reply_tx: mpsc::Sender<ReplyMsg>,
         service_table: ServiceTable,
     ) {
-        let lock = service_table.read().unwrap();
-        let service_fn = lock.get(&request.header.method_id);
+        let service_fn = service_table.get(request.header.method_id);
 
         debug!("call fn {:?}", service_fn);
         if let Some(service_fn) = service_fn {
