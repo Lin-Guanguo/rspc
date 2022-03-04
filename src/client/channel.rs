@@ -1,6 +1,10 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    sync::{atomic::AtomicU64, Arc},
+};
 
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use futures::{future, join, Future};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -9,11 +13,12 @@ use tokio::{
 };
 use tracing::info;
 
-use crate::protocol::{ReplyHeader, ReplyMsg, RequestMsg, REPLY_HEADER_BYTES};
+use crate::protocol::{ReplyHeader, ReplyMsg, RequestHeader, RequestMsg, REPLY_HEADER_BYTES};
 
 use super::error::ClientError;
 
 const REQUEST_BUF_SIZE: usize = 32;
+const USER_REQUEST_ID_START: u64 = 128;
 
 pub struct Channel {
     tcp: TcpStream,
@@ -24,6 +29,7 @@ pub struct ChannelRequest(RequestMsg, oneshot::Sender<ReplyMsg>);
 
 #[derive(Clone)]
 pub struct ChannelWriter {
+    next_request_id: Arc<AtomicU64>,
     write_tx: mpsc::Sender<ChannelRequest>,
 }
 
@@ -89,7 +95,10 @@ impl Channel {
             r
         };
 
-        let writer = ChannelWriter { write_tx };
+        let writer = ChannelWriter {
+            next_request_id: Arc::new(AtomicU64::new(USER_REQUEST_ID_START)),
+            write_tx,
+        };
         (run_future, writer)
     }
 }
@@ -97,9 +106,21 @@ impl Channel {
 impl ChannelWriter {
     pub async fn write(
         &self,
-        request: RequestMsg,
+        method_id: u32,
+        msg: Bytes,
         back: oneshot::Sender<ReplyMsg>,
     ) -> Result<(), ClientError> {
+        let request_id = self
+            .next_request_id
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let request = RequestMsg {
+            header: RequestHeader {
+                request_id,
+                method_id,
+                body_len: msg.len() as u32,
+            },
+            body: msg,
+        };
         self.write_tx.send(ChannelRequest(request, back)).await?;
         Ok(())
     }
