@@ -87,7 +87,7 @@ impl Channel {
                 header: ReplyHeader::new(request.header.request_id, ret.0, ret.1.len() as u32),
                 body: ret.1,
             };
-            reply_tx.send(reply); // TODO: error check
+            reply_tx.send(reply).await; // TODO: error check
         } else {
             todo!()
         }
