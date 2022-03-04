@@ -11,13 +11,13 @@ async fn main() {
 
     let msg = msg.encode_to_vec();
     println!("{:?}", msg);
-    let request = rspc::protocol::RequestMsg::new(54, 1, msg.len() as u32, msg.into());
+    let request = rspc::protocol::RequestHeader::new(54, 1, msg.len() as u32);
     println!("{:?}", request);
-    let header = request.encode_header();
+    let header = request.encode();
 
     if let Ok(mut channel) = channel {
         let r = channel.tcp.write_all(&header).await;
-        let r = channel.tcp.write_all(&request.msg_body).await;
+        let r = channel.tcp.write_all(&msg).await;
         println!("write return {:?}", r)
     }
 
