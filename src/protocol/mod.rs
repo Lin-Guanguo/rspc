@@ -1,5 +1,4 @@
-use byteorder::ByteOrder;
-use bytes::Bytes;
+use bytes::{Buf, BufMut, Bytes};
 
 pub const REQUEST_FRAME_HEADER_LEN: usize = 16;
 pub const REPLY_FRAME_HEADER_LEN: usize = 16;
@@ -30,54 +29,106 @@ pub struct ReplyFrame {
     pub body: Bytes,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum FrameError {
+    #[error("decode error")]
+    DecodeBufNotEnough,
+
+    #[error("encode error")]
+    EncodeBufNotEnough,
+}
+
+pub trait FrameHeader {
+    fn decode<B>(buf: B) -> Result<Self, FrameError>
+    where
+        B: Buf,
+        Self: Sized;
+
+    fn encode<B>(&self, buf: &mut B) -> Result<(), FrameError>
+    where
+        B: BufMut;
+}
+
+impl FrameHeader for RequestHeader {
+    fn decode<B>(mut buf: B) -> Result<Self, FrameError>
+    where
+        B: Buf,
+    {
+        if buf.remaining() < REQUEST_FRAME_HEADER_LEN {
+            Err(FrameError::DecodeBufNotEnough)
+        } else {
+            Ok(Self {
+                request_id: buf.get_u64(),
+                method_id: buf.get_u32(),
+                body_len: buf.get_u32(),
+            })
+        }
+    }
+
+    fn encode<B>(&self, buf: &mut B) -> Result<(), FrameError>
+    where
+        B: BufMut,
+    {
+        if buf.remaining_mut() < REQUEST_FRAME_HEADER_LEN {
+            Err(FrameError::EncodeBufNotEnough)
+        } else {
+            buf.put_u64(self.request_id);
+            buf.put_u32(self.method_id);
+            buf.put_u32(self.body_len);
+            Ok(())
+        }
+    }
+}
+
+impl FrameHeader for ReplyHeader {
+    fn decode<B>(mut buf: B) -> Result<Self, FrameError>
+    where
+        B: Buf,
+    {
+        if buf.remaining() < REQUEST_FRAME_HEADER_LEN {
+            Err(FrameError::DecodeBufNotEnough)
+        } else {
+            Ok(Self {
+                request_id: buf.get_u64(),
+                status_code: buf.get_u32(),
+                body_len: buf.get_u32(),
+            })
+        }
+    }
+
+    fn encode<B>(&self, buf: &mut B) -> Result<(), FrameError>
+    where
+        B: BufMut,
+    {
+        if buf.remaining_mut() < REQUEST_FRAME_HEADER_LEN {
+            Err(FrameError::EncodeBufNotEnough)
+        } else {
+            buf.put_u64(self.request_id);
+            buf.put_u32(self.status_code);
+            buf.put_u32(self.body_len);
+            Ok(())
+        }
+    }
+}
+
 impl RequestHeader {
-    pub fn new(request_id: u64, method_id: u32, body_len: u32) -> Self {
-        Self {
-            request_id,
-            method_id,
-            body_len,
-        }
-    }
-
-    pub fn decode(buf: &[u8; REQUEST_FRAME_HEADER_LEN]) -> Self {
-        Self {
-            request_id: byteorder::NetworkEndian::read_u64(buf),
-            method_id: byteorder::NetworkEndian::read_u32(&buf[8..]),
-            body_len: byteorder::NetworkEndian::read_u32(&buf[8 + 4..]),
-        }
-    }
-
-    pub fn encode(&self) -> [u8; REQUEST_FRAME_HEADER_LEN] {
-        let mut ret = [0; REQUEST_FRAME_HEADER_LEN];
-        byteorder::NetworkEndian::write_u64(&mut ret, self.request_id);
-        byteorder::NetworkEndian::write_u32(&mut ret[8..], self.method_id);
-        byteorder::NetworkEndian::write_u32(&mut ret[8 + 4..], self.body_len);
+    pub fn encode_to_array(&self) -> [u8; REQUEST_FRAME_HEADER_LEN] {
+        let mut ret = [0u8; REQUEST_FRAME_HEADER_LEN];
+        let mut buf_mut = &mut ret[..];
+        BufMut::put_u64(&mut buf_mut, self.request_id);
+        BufMut::put_u32(&mut buf_mut, self.method_id);
+        BufMut::put_u32(&mut buf_mut, self.body_len);
         ret
     }
 }
 
 impl ReplyHeader {
-    pub fn new(request_id: u64, status_code: u32, body_len: u32) -> Self {
-        Self {
-            request_id,
-            status_code,
-            body_len,
-        }
-    }
-
-    pub fn decode(buf: &[u8; REPLY_FRAME_HEADER_LEN]) -> Self {
-        Self {
-            request_id: byteorder::NetworkEndian::read_u64(buf),
-            status_code: byteorder::NetworkEndian::read_u32(&buf[8..]),
-            body_len: byteorder::NetworkEndian::read_u32(&buf[8 + 4..]),
-        }
-    }
-
-    pub fn encode(&self) -> [u8; REPLY_FRAME_HEADER_LEN] {
-        let mut ret = [0; REQUEST_FRAME_HEADER_LEN];
-        byteorder::NetworkEndian::write_u64(&mut ret, self.request_id);
-        byteorder::NetworkEndian::write_u32(&mut ret[8..], self.status_code);
-        byteorder::NetworkEndian::write_u32(&mut ret[8 + 4..], self.body_len);
+    pub fn encode_to_array(&self) -> [u8; REQUEST_FRAME_HEADER_LEN] {
+        let mut ret = [0u8; REQUEST_FRAME_HEADER_LEN];
+        let mut buf_mut = &mut ret[..];
+        BufMut::put_u64(&mut buf_mut, self.request_id);
+        BufMut::put_u32(&mut buf_mut, self.status_code);
+        BufMut::put_u32(&mut buf_mut, self.body_len);
         ret
     }
 }

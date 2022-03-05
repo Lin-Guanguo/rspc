@@ -35,7 +35,7 @@ impl Channel {
             let mut header_buf = [0u8; REQUEST_FRAME_HEADER_LEN];
             loop {
                 read_half.read_exact(&mut header_buf).await?;
-                let header = RequestHeader::decode(&header_buf);
+                let header = RequestHeader::decode(&header_buf[..]).unwrap();
                 let mut body = vec![0u8; header.body_len as usize];
                 let read_n = read_half.read(&mut body).await?;
                 assert_eq!(read_n, header.body_len as usize);
@@ -62,7 +62,9 @@ impl Channel {
             let mut write_half = write_half;
             let mut reply_rx = reply_rx;
             while let Some(reply) = reply_rx.recv().await {
-                write_half.write_all(&reply.header.encode()).await?;
+                write_half
+                    .write_all(&reply.header.encode_to_array())
+                    .await?;
                 write_half.write_all(&reply.body).await?;
             }
             Result::<(), ServerError>::Ok(())
@@ -83,7 +85,11 @@ impl Channel {
         if let Some(service_fn) = service_fn {
             let ret = service_fn(request.body);
             let reply = ReplyFrame {
-                header: ReplyHeader::new(request.header.request_id, ret.0, ret.1.len() as u32),
+                header: ReplyHeader {
+                    request_id: request.header.request_id,
+                    status_code: ret.0,
+                    body_len: ret.1.len() as u32,
+                },
                 body: ret.1,
             };
 

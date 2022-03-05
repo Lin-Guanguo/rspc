@@ -14,7 +14,7 @@ use tokio::{
 use tracing::{debug, info};
 
 use crate::protocol::{
-    ReplyFrame, ReplyHeader, RequestFrame, RequestHeader, REPLY_FRAME_HEADER_LEN,
+    FrameHeader, ReplyFrame, ReplyHeader, RequestFrame, RequestHeader, REPLY_FRAME_HEADER_LEN,
 };
 
 use super::{error::ClientError, REQUEST_BUF_N, REQUEST_ID_START};
@@ -59,7 +59,7 @@ impl Channel {
                 let mut header_buf = [0u8; REPLY_FRAME_HEADER_LEN];
                 loop {
                     tcp_read.read_exact(&mut header_buf).await?;
-                    let header = ReplyHeader::decode(&header_buf);
+                    let header = ReplyHeader::decode(&header_buf[..]).unwrap();
                     let mut body = vec![0u8; header.body_len as usize];
                     let read_n = tcp_read.read_exact(&mut body).await?;
                     assert_eq!(read_n, header.body_len as usize);
@@ -84,7 +84,9 @@ impl Channel {
             let write = async move {
                 while let Some(ChannelRequest(request, back)) = write_rx.recv().await {
                     // TODO: use once write
-                    tcp_write.write_all(&request.header.encode()).await?;
+                    tcp_write
+                        .write_all(&request.header.encode_to_array())
+                        .await?;
                     tcp_write.write_all(&request.body).await?;
 
                     debug!("channel write {:?}", request.header);
