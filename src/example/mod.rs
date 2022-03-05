@@ -11,15 +11,15 @@ pub fn hello_service(reqeust: Bytes) -> (u32, Bytes) {
 }
 
 pub trait HelloServer {
-    fn hello_service(&mut self, reqeust: Bytes) -> (u32, Bytes);
+    fn hello_service(&self, reqeust: Bytes) -> (u32, Bytes);
 }
 
-struct HelloServerImpl {
-    count: i32,
+pub struct HelloServerImpl {
+    pub count: i32,
 }
 
 impl HelloServer for HelloServerImpl {
-    fn hello_service(&mut self, reqeust: Bytes) -> (u32, Bytes) {
+    fn hello_service(&self, reqeust: Bytes) -> (u32, Bytes) {
         let reqeust = HelloRequest::decode(&reqeust[..]).unwrap();
         let mut reply = HelloReply::default();
         reply.msg = format!("hello {}, count = {}", reqeust.name, self.count);
@@ -27,12 +27,12 @@ impl HelloServer for HelloServerImpl {
     }
 }
 
-struct HelloServerStub {
+pub struct HelloServerStub {
     // channel: Channel;
 }
 
 impl HelloServer for HelloServerStub {
-    fn hello_service(&mut self, reqeust: Bytes) -> (u32, Bytes) {
+    fn hello_service(&self, reqeust: Bytes) -> (u32, Bytes) {
         todo!()
     }
 }
