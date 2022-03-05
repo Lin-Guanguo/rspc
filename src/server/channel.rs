@@ -1,5 +1,5 @@
 use super::{error::ServerError, service::*, REPLY_BUF_N};
-use crate::protocol::*;
+use crate::protocol::frame::*;
 use bytes::BytesMut;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},

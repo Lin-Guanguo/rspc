@@ -1,6 +1,9 @@
 use bytes::Bytes;
 use prost::Message;
-use rspc::example::{HelloServer, HelloServerImpl};
+use rspc::{
+    example::{HelloServer, HelloServerImpl},
+    protocol::frame::{FrameHeader, RequestHeader},
+};
 
 include!(concat!(env!("OUT_DIR"), "/rspc.hello.rs"));
 
