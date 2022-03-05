@@ -24,6 +24,10 @@ impl<S: HelloService> Service for S {
     fn method_names(&self) -> &'static [&'static str] {
         &Self::METHOD_NAMES
     }
+
+    fn num_of_methods(&self) -> usize {
+        Self::METHOD_NAMES.len()
+    }
 }
 
 pub struct HelloServerStub {
