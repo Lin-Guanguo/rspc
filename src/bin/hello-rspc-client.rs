@@ -1,6 +1,6 @@
 use futures::join;
 use prost::Message;
-use rspc::protocol::RequestMsg;
+use rspc::protocol::RequestFrame;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::oneshot,

@@ -1,11 +1,8 @@
 use byteorder::ByteOrder;
 use bytes::Bytes;
 
-// request header bytes
-pub const REQUEST_HEADER_BYTES: usize = 16;
-
-// reply header bytes
-pub const REPLY_HEADER_BYTES: usize = 16;
+pub const REQUEST_FRAME_HEADER_LEN: usize = 16;
+pub const REPLY_FRAME_HEADER_LEN: usize = 16;
 
 #[derive(Debug)]
 pub struct RequestHeader {
@@ -15,7 +12,7 @@ pub struct RequestHeader {
 }
 
 #[derive(Debug)]
-pub struct RequestMsg {
+pub struct RequestFrame {
     pub header: RequestHeader,
     pub body: Bytes,
 }
@@ -28,7 +25,7 @@ pub struct ReplyHeader {
 }
 
 #[derive(Debug)]
-pub struct ReplyMsg {
+pub struct ReplyFrame {
     pub header: ReplyHeader,
     pub body: Bytes,
 }
@@ -42,7 +39,7 @@ impl RequestHeader {
         }
     }
 
-    pub fn decode(buf: &[u8; REQUEST_HEADER_BYTES]) -> Self {
+    pub fn decode(buf: &[u8; REQUEST_FRAME_HEADER_LEN]) -> Self {
         Self {
             request_id: byteorder::NetworkEndian::read_u64(buf),
             method_id: byteorder::NetworkEndian::read_u32(&buf[8..]),
@@ -50,8 +47,8 @@ impl RequestHeader {
         }
     }
 
-    pub fn encode(&self) -> [u8; REQUEST_HEADER_BYTES] {
-        let mut ret = [0; REQUEST_HEADER_BYTES];
+    pub fn encode(&self) -> [u8; REQUEST_FRAME_HEADER_LEN] {
+        let mut ret = [0; REQUEST_FRAME_HEADER_LEN];
         byteorder::NetworkEndian::write_u64(&mut ret, self.request_id);
         byteorder::NetworkEndian::write_u32(&mut ret[8..], self.method_id);
         byteorder::NetworkEndian::write_u32(&mut ret[8 + 4..], self.body_len);
@@ -68,7 +65,7 @@ impl ReplyHeader {
         }
     }
 
-    pub fn decode(buf: &[u8; REPLY_HEADER_BYTES]) -> Self {
+    pub fn decode(buf: &[u8; REPLY_FRAME_HEADER_LEN]) -> Self {
         Self {
             request_id: byteorder::NetworkEndian::read_u64(buf),
             status_code: byteorder::NetworkEndian::read_u32(&buf[8..]),
@@ -76,8 +73,8 @@ impl ReplyHeader {
         }
     }
 
-    pub fn encode(&self) -> [u8; REPLY_HEADER_BYTES] {
-        let mut ret = [0; REQUEST_HEADER_BYTES];
+    pub fn encode(&self) -> [u8; REPLY_FRAME_HEADER_LEN] {
+        let mut ret = [0; REQUEST_FRAME_HEADER_LEN];
         byteorder::NetworkEndian::write_u64(&mut ret, self.request_id);
         byteorder::NetworkEndian::write_u32(&mut ret[8..], self.status_code);
         byteorder::NetworkEndian::write_u32(&mut ret[8 + 4..], self.body_len);

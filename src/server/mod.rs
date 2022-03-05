@@ -12,6 +12,8 @@ use self::{
     service::{ServiceFn, ServiceTable},
 };
 
+const REPLY_BUF_N: usize = 32;
+
 pub struct Server {
     port: i32,
     service_table: ServiceTable,

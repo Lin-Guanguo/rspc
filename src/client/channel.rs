@@ -13,19 +13,18 @@ use tokio::{
 };
 use tracing::{debug, info};
 
-use crate::protocol::{ReplyHeader, ReplyMsg, RequestHeader, RequestMsg, REPLY_HEADER_BYTES};
+use crate::protocol::{
+    ReplyFrame, ReplyHeader, RequestFrame, RequestHeader, REPLY_FRAME_HEADER_LEN,
+};
 
-use super::error::ClientError;
-
-const REQUEST_BUF_SIZE: usize = 32;
-const USER_REQUEST_ID_START: u64 = 128;
+use super::{error::ClientError, REQUEST_BUF_N, REQUEST_ID_START};
 
 pub struct Channel {
     tcp: TcpStream,
 }
 
 #[derive(Debug)]
-pub struct ChannelRequest(RequestMsg, oneshot::Sender<ReplyMsg>);
+pub struct ChannelRequest(RequestFrame, oneshot::Sender<ReplyFrame>);
 
 #[derive(Clone)]
 pub struct ChannelWriter {
@@ -46,18 +45,18 @@ impl Channel {
         impl Future<Output = (Result<(), ClientError>, Result<(), ClientError>)>,
         ChannelWriter,
     ) {
-        let (write_tx, mut write_rx) = mpsc::channel::<ChannelRequest>(REQUEST_BUF_SIZE);
+        let (write_tx, mut write_rx) = mpsc::channel::<ChannelRequest>(REQUEST_BUF_N);
 
         let mut tcp = self.tcp;
         let run_future = async move {
             let (mut tcp_read, mut tcp_write) = tcp.split();
 
-            let record = RefCell::new(HashMap::<u64, oneshot::Sender<ReplyMsg>>::new());
+            let record = RefCell::new(HashMap::<u64, oneshot::Sender<ReplyFrame>>::new());
             let record1 = &record;
             let record2 = &record;
 
             let read = async move {
-                let mut header_buf = [0u8; REPLY_HEADER_BYTES];
+                let mut header_buf = [0u8; REPLY_FRAME_HEADER_LEN];
                 loop {
                     tcp_read.read_exact(&mut header_buf).await?;
                     let header = ReplyHeader::decode(&header_buf);
@@ -65,7 +64,7 @@ impl Channel {
                     let read_n = tcp_read.read_exact(&mut body).await?;
                     assert_eq!(read_n, header.body_len as usize);
 
-                    let msg = ReplyMsg {
+                    let msg = ReplyFrame {
                         header,
                         body: body.into(),
                     };
@@ -102,7 +101,7 @@ impl Channel {
         };
 
         let writer = ChannelWriter {
-            next_request_id: Arc::new(AtomicU64::new(USER_REQUEST_ID_START)),
+            next_request_id: Arc::new(AtomicU64::new(REQUEST_ID_START)),
             write_tx,
         };
         (run_future, writer)
@@ -114,12 +113,12 @@ impl ChannelWriter {
         &self,
         method_id: u32,
         msg: Bytes,
-        back: oneshot::Sender<ReplyMsg>,
+        back: oneshot::Sender<ReplyFrame>,
     ) -> Result<(), ClientError> {
         let request_id = self
             .next_request_id
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        let request = RequestMsg {
+        let request = RequestFrame {
             header: RequestHeader {
                 request_id,
                 method_id,

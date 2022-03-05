@@ -1,4 +1,4 @@
-use super::{error::ServerError, service::*};
+use super::{error::ServerError, service::*, REPLY_BUF_N};
 use crate::protocol::*;
 use bytes::BytesMut;
 use tokio::{
@@ -8,8 +8,6 @@ use tokio::{
     try_join,
 };
 use tracing::{debug, instrument};
-
-const REPLY_BUF_SIZE: usize = 32;
 
 pub struct Channel {
     tcp: TcpStream,
@@ -29,12 +27,12 @@ impl Channel {
         } = self;
 
         let (read_half, write_half) = tcp.split();
-        let (reply_tx, reply_rx) = mpsc::channel(REPLY_BUF_SIZE);
+        let (reply_tx, reply_rx) = mpsc::channel(REPLY_BUF_N);
 
         let read_handler = async move {
             let mut read_half = read_half;
             let reply_tx = reply_tx;
-            let mut header_buf = [0u8; REQUEST_HEADER_BYTES];
+            let mut header_buf = [0u8; REQUEST_FRAME_HEADER_LEN];
             loop {
                 read_half.read_exact(&mut header_buf).await?;
                 let header = RequestHeader::decode(&header_buf);
@@ -42,7 +40,7 @@ impl Channel {
                 let read_n = read_half.read(&mut body).await?;
                 assert_eq!(read_n, header.body_len as usize);
 
-                let request = RequestMsg {
+                let request = RequestFrame {
                     header,
                     body: body.into(),
                 };
@@ -76,15 +74,15 @@ impl Channel {
 
     #[instrument(name="request", skip_all, fields(reuqest_id=?request.header.request_id, method_id=?request.header.method_id))]
     async fn handle_request(
-        request: RequestMsg,
-        reply_tx: mpsc::Sender<ReplyMsg>,
+        request: RequestFrame,
+        reply_tx: mpsc::Sender<ReplyFrame>,
         service_table: ServiceTable,
     ) {
         let service_fn = service_table.get(request.header.method_id);
 
         if let Some(service_fn) = service_fn {
             let ret = service_fn(request.body);
-            let reply = ReplyMsg {
+            let reply = ReplyFrame {
                 header: ReplyHeader::new(request.header.request_id, ret.0, ret.1.len() as u32),
                 body: ret.1,
             };
