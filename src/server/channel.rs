@@ -38,14 +38,16 @@ impl Channel {
             loop {
                 read_half.read_exact(&mut header_buf).await?;
                 let header = RequestHeader::decode(&header_buf);
-                let mut body = BytesMut::with_capacity(header.body_len as usize);
-                read_half.read_exact(&mut body).await?;
-                debug!("Received reqeust {:?}", header);
+                let mut body = vec![0u8; header.body_len as usize];
+                let read_n = read_half.read(&mut body).await?;
+                assert_eq!(read_n, header.body_len as usize);
 
                 let request = RequestMsg {
                     header,
                     body: body.into(),
                 };
+
+                debug!("Received reqeust {:?}", request.header);
 
                 tokio::spawn(Self::handle_request(
                     request,
@@ -80,13 +82,15 @@ impl Channel {
     ) {
         let service_fn = service_table.get(request.header.method_id);
 
-        debug!("call fn {:?}", service_fn);
         if let Some(service_fn) = service_fn {
             let ret = service_fn(request.body);
             let reply = ReplyMsg {
                 header: ReplyHeader::new(request.header.request_id, ret.0, ret.1.len() as u32),
                 body: ret.1,
             };
+
+            debug!("call fn {:?} reply: {:?}", service_fn, reply.header);
+
             reply_tx.send(reply).await; // TODO: error check
         } else {
             todo!()

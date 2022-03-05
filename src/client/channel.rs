@@ -11,7 +11,7 @@ use tokio::{
     net::{TcpStream, ToSocketAddrs},
     sync::{mpsc, oneshot},
 };
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::protocol::{ReplyHeader, ReplyMsg, RequestHeader, RequestMsg, REPLY_HEADER_BYTES};
 
@@ -61,12 +61,16 @@ impl Channel {
                 loop {
                     tcp_read.read_exact(&mut header_buf).await?;
                     let header = ReplyHeader::decode(&header_buf);
-                    let mut body = BytesMut::with_capacity(header.body_len as usize);
-                    tcp_read.read_exact(&mut body).await?;
+                    let mut body = vec![0u8; header.body_len as usize];
+                    let read_n = tcp_read.read_exact(&mut body).await?;
+                    assert_eq!(read_n, header.body_len as usize);
+
                     let msg = ReplyMsg {
                         header,
                         body: body.into(),
                     };
+
+                    debug!("channel read {:?}", msg.header);
 
                     let mut record = record1.borrow_mut();
                     if let Some(chan) = record.remove(&msg.header.request_id) {
@@ -83,6 +87,8 @@ impl Channel {
                     // TODO: use once write
                     tcp_write.write_all(&request.header.encode()).await?;
                     tcp_write.write_all(&request.body).await?;
+
+                    debug!("channel write {:?}", request.header);
 
                     let mut record = record2.borrow_mut();
                     record.insert(request.header.request_id, back);
