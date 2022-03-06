@@ -26,12 +26,12 @@ impl ServerReaderWriter {
         }
     }
 
-    pub async fn write(&self, request: Bytes) -> Result<(), ServerError> {
-        self.writer.write(request).await
+    pub async fn write(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
+        self.writer.write(status_code, request).await
     }
 
-    pub async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
-        self.writer.write_last(request).await
+    pub async fn write_last(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
+        self.writer.write_last(status_code, request).await
     }
 
     pub async fn write_complete(&self) -> Result<(), ServerError> {
@@ -50,7 +50,8 @@ pub struct ServerWriter {
 
 #[derive(Debug)]
 pub struct WriteMsg {
-    eos: bool,           // end of stream flag
+    eos: bool, // end of stream flag
+    status_code: u32,
     body: Option<Bytes>, // message body, if None mean Signal msg
 }
 
@@ -59,17 +60,19 @@ impl ServerWriter {
         Self { writer_chan }
     }
 
-    pub async fn write(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: false,
+            status_code,
             body: Some(request),
         })
         .await
     }
 
-    pub async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write_last(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: true,
+            status_code,
             body: Some(request),
         })
         .await
@@ -78,6 +81,7 @@ impl ServerWriter {
     pub async fn write_complete(&self) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: true,
+            status_code: 0,
             body: None,
         })
         .await
