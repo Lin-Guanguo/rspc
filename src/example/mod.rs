@@ -35,9 +35,12 @@ impl HelloServer for HelloServerImpl {
         tokio::spawn(async move {
             let mut stream = stream;
             while let Some(r) = stream.read().await {
-                stream.write(r).await.unwrap();
+                stream.write(0, r).await.unwrap();
             }
-            stream.write_last(String::from("end").into()).await.unwrap();
+            stream
+                .write_last(0, String::from("end").into())
+                .await
+                .unwrap();
         });
     }
 }

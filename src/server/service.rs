@@ -19,7 +19,7 @@ pub struct ServerReaderWriter {
 }
 
 impl ServerReaderWriter {
-    fn new(writer_chan: mpsc::Sender<WriteMsg>, reader_chan: mpsc::Receiver<Bytes>) -> Self {
+    fn new(writer_chan: mpsc::Sender<WriteInfo>, reader_chan: mpsc::Receiver<Bytes>) -> Self {
         Self {
             writer: ServerWriter::new(writer_chan),
             reader: ServerReader::new(reader_chan),
@@ -45,23 +45,23 @@ impl ServerReaderWriter {
 
 #[derive(Clone)]
 pub struct ServerWriter {
-    writer_chan: mpsc::Sender<WriteMsg>,
+    writer_chan: mpsc::Sender<WriteInfo>,
 }
 
 #[derive(Debug)]
-pub struct WriteMsg {
+pub struct WriteInfo {
     eos: bool, // end of stream flag
     status_code: u32,
     body: Option<Bytes>, // message body, if None mean Signal msg
 }
 
 impl ServerWriter {
-    fn new(writer_chan: mpsc::Sender<WriteMsg>) -> Self {
+    fn new(writer_chan: mpsc::Sender<WriteInfo>) -> Self {
         Self { writer_chan }
     }
 
     pub async fn write(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
-        self.write_msg(WriteMsg {
+        self.write_msg(WriteInfo {
             eos: false,
             status_code,
             body: Some(request),
@@ -70,7 +70,7 @@ impl ServerWriter {
     }
 
     pub async fn write_last(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {
-        self.write_msg(WriteMsg {
+        self.write_msg(WriteInfo {
             eos: true,
             status_code,
             body: Some(request),
@@ -79,7 +79,7 @@ impl ServerWriter {
     }
 
     pub async fn write_complete(&self) -> Result<(), ServerError> {
-        self.write_msg(WriteMsg {
+        self.write_msg(WriteInfo {
             eos: true,
             status_code: 0,
             body: None,
@@ -87,7 +87,7 @@ impl ServerWriter {
         .await
     }
 
-    pub async fn write_msg(&self, msg: WriteMsg) -> Result<(), ServerError> {
+    pub async fn write_msg(&self, msg: WriteInfo) -> Result<(), ServerError> {
         Ok(self.writer_chan.send(msg).await?)
     }
 }
