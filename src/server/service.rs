@@ -1,10 +1,12 @@
+use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 
 use super::error::ServerError;
 
+#[async_trait(?Send)]
 pub trait Service {
-    fn call_method(&self, fn_n: usize, stream: ServerReaderWriter);
+    async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter);
 
     fn method_names(&self) -> &'static [&'static str];
 
@@ -24,11 +26,11 @@ impl ServerReaderWriter {
         }
     }
 
-    async fn write(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write(&self, request: Bytes) -> Result<(), ServerError> {
         self.writer.write(request).await
     }
 
-    async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
         self.writer.write_last(request).await
     }
 
@@ -36,7 +38,7 @@ impl ServerReaderWriter {
         self.writer.write_complete().await
     }
 
-    async fn read(&mut self) -> Option<Bytes> {
+    pub async fn read(&mut self) -> Option<Bytes> {
         self.reader.read().await
     }
 }
@@ -57,7 +59,7 @@ impl ServerWriter {
         Self { writer_chan }
     }
 
-    async fn write(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write(&self, request: Bytes) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: false,
             body: Some(request),
@@ -65,7 +67,7 @@ impl ServerWriter {
         .await
     }
 
-    async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
+    pub async fn write_last(&self, request: Bytes) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: true,
             body: Some(request),
@@ -73,7 +75,7 @@ impl ServerWriter {
         .await
     }
 
-    async fn write_complete(&self) -> Result<(), ServerError> {
+    pub async fn write_complete(&self) -> Result<(), ServerError> {
         self.write_msg(WriteMsg {
             eos: true,
             body: None,
@@ -95,7 +97,7 @@ impl ServerReader {
         Self { reader_chan }
     }
 
-    async fn read(&mut self) -> Option<Bytes> {
+    pub async fn read(&mut self) -> Option<Bytes> {
         self.reader_chan.recv().await
     }
 }
