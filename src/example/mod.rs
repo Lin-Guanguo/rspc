@@ -1,15 +1,17 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 use crate::server::service::{ServerReaderWriter, Service};
 
-#[async_trait(?Send)]
-pub trait HelloServer {
+#[async_trait]
+pub trait HelloServer: Sync + Send {
     const METHOD_NAMES: [&'static str; 1] = ["hello"];
 
     async fn hello(&self, stream: ServerReaderWriter);
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl<S: HelloServer> Service for S {
     async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter) {
         match fn_n {
@@ -29,7 +31,7 @@ impl<S: HelloServer> Service for S {
 
 pub struct HelloServerImpl {}
 
-#[async_trait(?Send)]
+#[async_trait]
 impl HelloServer for HelloServerImpl {
     async fn hello(&self, stream: ServerReaderWriter) {
         tokio::spawn(async move {

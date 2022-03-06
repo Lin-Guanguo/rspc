@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 
 use super::error::ServerError;
 
-#[async_trait(?Send)]
-pub trait Service {
+#[async_trait]
+pub trait Service: Sync + Send {
     async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter);
 
     fn method_names(&self) -> &'static [&'static str];
@@ -19,7 +21,7 @@ pub struct ServerReaderWriter {
 }
 
 impl ServerReaderWriter {
-    fn new(writer_chan: mpsc::Sender<WriteInfo>, reader_chan: mpsc::Receiver<Bytes>) -> Self {
+    pub fn new(writer_chan: mpsc::Sender<WriteInfo>, reader_chan: mpsc::Receiver<Bytes>) -> Self {
         Self {
             writer: ServerWriter::new(writer_chan),
             reader: ServerReader::new(reader_chan),
