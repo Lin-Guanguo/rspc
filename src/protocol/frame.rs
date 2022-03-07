@@ -29,6 +29,17 @@ pub struct ReplyFlag {
     flag: u32,
 }
 
+pub enum RequestFlagBit {
+    EOS = 0,
+    SIGNAL = 1,
+    FIRST = 2,
+}
+
+pub enum ReplyFlagBit {
+    EOS = 0,
+    SIGNAL = 1,
+}
+
 #[derive(Debug)]
 pub struct ReplyFrame {
     pub header: ReplyHeader,
@@ -165,6 +176,14 @@ pub trait FrameFlag {
         Self: Sized;
 
     fn encode(&self) -> u32;
+
+    type Bit;
+
+    fn set(&mut self, bit: Self::Bit) -> &mut Self;
+
+    fn clear(&mut self, bit: Self::Bit) -> &mut Self;
+
+    fn is(&self, bit: Self::Bit) -> bool;
 }
 
 impl FrameFlag for RequestFlag {
@@ -177,6 +196,22 @@ impl FrameFlag for RequestFlag {
 
     fn encode(&self) -> u32 {
         self.flag
+    }
+
+    type Bit = RequestFlagBit;
+
+    fn set(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag |= 1 << (bit as i32);
+        self
+    }
+
+    fn clear(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag &= !(1 << (bit as i32));
+        self
+    }
+
+    fn is(&self, bit: Self::Bit) -> bool {
+        (self.flag & (1 << (bit as i32))) != 0
     }
 }
 
@@ -191,64 +226,20 @@ impl FrameFlag for ReplyFlag {
     fn encode(&self) -> u32 {
         self.flag
     }
-}
 
-impl RequestFlag {
-    pub fn new() -> Self {
-        Self { flag: 0 }
+    type Bit = ReplyFlagBit;
+
+    fn set(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag |= 1 << (bit as i32);
+        self
     }
 
-    pub fn set_eos(&mut self) {
-        self.set_bit(0);
+    fn clear(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag &= !(1 << (bit as i32));
+        self
     }
 
-    pub fn is_eos(&self) -> bool {
-        self.get_bit(0)
-    }
-
-    pub fn set_signal(&mut self) {
-        self.set_bit(1);
-    }
-
-    pub fn is_signal(&self) -> bool {
-        self.get_bit(1)
-    }
-
-    fn set_bit(&mut self, bit: u32) {
-        self.flag |= 1 << bit;
-    }
-
-    fn get_bit(&self, bit: u32) -> bool {
-        (self.flag & (1 << bit)) != 0
-    }
-}
-
-impl ReplyFlag {
-    pub fn new() -> Self {
-        Self { flag: 0 }
-    }
-
-    pub fn set_eos(&mut self) {
-        self.set_bit(0);
-    }
-
-    pub fn is_eos(&self) -> bool {
-        self.get_bit(0)
-    }
-
-    pub fn set_signal(&mut self) {
-        self.set_bit(1);
-    }
-
-    pub fn is_signal(&self) -> bool {
-        self.get_bit(1)
-    }
-
-    fn set_bit(&mut self, bit: u32) {
-        self.flag = self.flag | 1 << bit;
-    }
-
-    fn get_bit(&self, bit: u32) -> bool {
-        (self.flag & (1 << bit)) != 0
+    fn is(&self, bit: Self::Bit) -> bool {
+        (self.flag & (1 << (bit as i32))) != 0
     }
 }
