@@ -1,17 +1,20 @@
-use std::sync::Arc;
+use std::{
+    cell::{Cell, RefCell},
+    sync::Arc,
+};
 
 use async_trait::async_trait;
 
 use crate::server::service::{ServerReaderWriter, Service};
 
-#[async_trait]
-pub trait HelloServer: Sync + Send {
+#[async_trait(?Send)]
+pub trait HelloServer {
     const METHOD_NAMES: [&'static str; 1] = ["hello"];
 
     async fn hello(&self, stream: ServerReaderWriter);
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl<S: HelloServer> Service for S {
     async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter) {
         match fn_n {
@@ -29,11 +32,15 @@ impl<S: HelloServer> Service for S {
     }
 }
 
-pub struct HelloServerImpl {}
+pub struct HelloServerImpl {
+    share_states: Cell<i32>,
+}
 
-#[async_trait]
+#[async_trait(?Send)]
 impl HelloServer for HelloServerImpl {
     async fn hello(&self, stream: ServerReaderWriter) {
+        let t = self.share_states.get();
+        self.share_states.set(t + 1);
         tokio::spawn(async move {
             let mut stream = stream;
             while let Some(r) = stream.read().await {

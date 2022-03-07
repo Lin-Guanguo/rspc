@@ -6,8 +6,8 @@ use tokio::sync::mpsc;
 
 use super::error::ServerError;
 
-#[async_trait]
-pub trait Service: Sync + Send {
+#[async_trait(?Send)]
+pub trait Service {
     async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter);
 
     fn method_names(&self) -> &'static [&'static str];

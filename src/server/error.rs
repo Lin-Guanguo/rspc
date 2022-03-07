@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use tokio::sync::mpsc;
 
 use crate::protocol::frame::FrameError;
@@ -9,8 +10,11 @@ pub enum ServerError {
     #[error("IoError")]
     IoError(#[from] std::io::Error),
 
-    #[error("Service write mpsc send error")]
-    ServiceWriteError(#[from] mpsc::error::SendError<WriteInfo>),
+    #[error("Service write reply to channel error")]
+    ReplyChannelSendError(#[from] mpsc::error::SendError<WriteInfo>),
+
+    #[error("Service write request to channel error")]
+    RequestChannelSendError(#[from] mpsc::error::SendError<Bytes>),
 
     #[error("framing error")]
     FrameError(#[from] FrameError),
