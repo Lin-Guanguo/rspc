@@ -8,6 +8,6 @@
 
 ## TODO
 
-* 客户端Channel代码重构，自定义Future
 * Channel增加握手阶段，丰富Channel类型，包括加密
-* ★服务器重构
+* ★ method_id -> Service implement
+* ServiceReaderWriter complete

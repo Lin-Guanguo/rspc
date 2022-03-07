@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
 
+use crate::protocol::frame::{ReplyFrame, RequestFrame};
+
 use super::error::ServerError;
 
 #[async_trait(?Send)]
@@ -21,11 +23,11 @@ pub struct ServerReaderWriter {
 }
 
 impl ServerReaderWriter {
-    pub fn new(writer_chan: mpsc::Sender<WriteInfo>, reader_chan: mpsc::Receiver<Bytes>) -> Self {
-        Self {
-            writer: ServerWriter::new(writer_chan),
-            reader: ServerReader::new(reader_chan),
-        }
+    pub fn new(
+        writer_chan: mpsc::Sender<ReplyFrame>,
+        reader_chan: mpsc::Receiver<RequestFrame>,
+    ) -> Self {
+        todo!()
     }
 
     pub async fn write(&self, status_code: u32, request: Bytes) -> Result<(), ServerError> {

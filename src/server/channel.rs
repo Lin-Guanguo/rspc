@@ -1,25 +1,26 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
-use bytes::Bytes;
-use futures::lock::Mutex;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{tcp, TcpStream},
     sync::mpsc,
+    task,
 };
+use tracing::debug;
 
 use crate::{
-    protocol::frame::{FrameHeader, RequestFrame, RequestHeader, REQUEST_FRAME_HEADER_LEN},
+    protocol::frame::{
+        FrameFlag, FrameHeader, ReplyFrame, RequestFlagBit, RequestFrame, RequestHeader,
+        REQUEST_FRAME_HEADER_LEN,
+    },
     server::service::ServerReaderWriter,
 };
 
-use super::{
-    error::ServerError,
-    service::{Service, WriteInfo},
-};
+use super::{error::ServerError, service::Service};
 
 const CHANNEL_REPLY_BUF_SIZE: usize = 32;
 const CHANNEL_REQUEST_BUF_SIZE: usize = 32;
+const CHANNEL_SERVICE_BUF_SIZE: usize = 8;
 
 pub struct Channel {
     stream: TcpStream,
@@ -39,20 +40,27 @@ impl Channel {
         let tcp_reader = BufReader::new(tcp_reader);
         let tcp_writer = BufWriter::new(tcp_writer);
 
-        let working: RefCell<HashMap<u32, mpsc::Sender<Bytes>>> = RefCell::default();
-        let (reply_tx, reply_rx) = mpsc::channel(CHANNEL_REPLY_BUF_SIZE);
+        // working service request stream record
+        let working: RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>> = RefCell::default();
 
-        let reader = Self::channel_reader(tcp_reader, &working, reply_tx);
+        let (reply_tx, reply_rx) = mpsc::channel(CHANNEL_REPLY_BUF_SIZE);
+        let (request_tx, request_rx) = mpsc::channel(CHANNEL_REQUEST_BUF_SIZE);
+
+        let reader = Self::channel_reader(tcp_reader, request_tx);
+        let request_handler = Self::request_handler(request_rx, reply_tx, &working);
         let writer = Self::channel_writer(tcp_writer, reply_rx);
 
-        let ret = futures::try_join!(reader, writer)?;
+        let local = task::LocalSet::new();
+        let ret = local
+            .run_until(futures::future::try_join3(reader, request_handler, writer))
+            .await?;
+
         Ok(())
     }
 
     async fn channel_reader(
         mut tcp_reader: BufReader<tcp::ReadHalf<'_>>,
-        working: &RefCell<HashMap<u32, mpsc::Sender<Bytes>>>,
-        reply_tx: mpsc::Sender<WriteInfo>,
+        request_tx: mpsc::Sender<RequestFrame>,
     ) -> Result<(), ServerError> {
         let mut header_buf = [0u8; REQUEST_FRAME_HEADER_LEN];
         loop {
@@ -60,37 +68,88 @@ impl Channel {
             let header = RequestHeader::decode(&header_buf[..])?;
             let mut body = vec![0u8; header.body_len as usize];
             tcp_reader.read_exact(&mut body).await?;
+            let frame = RequestFrame {
+                header,
+                body: body.into(),
+            };
 
-            let mut working = working.borrow_mut();
-            if let Some(request_tx) = working.get(&header.request_id) {
-                if !header.flag.is_signal() {
-                    request_tx.send(body.into()).await?;
+            debug!(read_frame = ?frame);
+
+            request_tx.send(frame).await?;
+        }
+        todo!()
+    }
+
+    async fn request_handler(
+        mut request_rx: mpsc::Receiver<RequestFrame>,
+        reply_tx: mpsc::Sender<ReplyFrame>,
+        working: &RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>>,
+    ) -> Result<(), ServerError> {
+        while let Some(frame) = request_rx.recv().await {
+            let RequestFrame {
+                header:
+                    RequestHeader {
+                        request_id,
+                        method_id,
+                        ref flag,
+                        body_len,
+                    },
+                ref body,
+            } = frame;
+
+            use RequestFlagBit::*;
+            // 3 flag: FIRST, EOS, SIGNAL
+            //
+            // FIRST && !EOS    run service and record
+            // FIRST && EOS     run service not record
+            // !FIRST && EOS    remove from record
+            // !FIRST && !EOS   get from record
+            // !SIGNAL          send message
+            let service_tx = if flag.is(FIRST) {
+                let service = Self::get_service(method_id);
+                let (service_tx, service_rx) = mpsc::channel(CHANNEL_SERVICE_BUF_SIZE);
+                let rw = ServerReaderWriter::new(reply_tx.clone(), service_rx);
+                task::spawn_local(async move {
+                    let service = service;
+                    service.call_method(0, rw).await
+                });
+                if !flag.is(EOS) {
+                    let mut working = working.borrow_mut();
+                    working.insert(request_id, service_tx.clone());
                 }
-                if header.flag.is_eos() {
-                    working.remove(&header.request_id);
-                }
+                service_tx
+            } else if flag.is(EOS) {
+                let mut working = working.borrow_mut();
+                working
+                    .remove(&request_id)
+                    .ok_or(ServerError::ServiceRecordError())?
             } else {
-                let (request_tx, request_rx) = mpsc::channel(CHANNEL_REQUEST_BUF_SIZE);
-                let rw = ServerReaderWriter::new(reply_tx.clone(), request_rx);
+                let working = working.borrow_mut();
+                working
+                    .get(&request_id)
+                    .map(|s| s.clone())
+                    .ok_or(ServerError::ServiceRecordError())?
+            };
 
-                let service = Self::get_service(header.method_id);
-                // TODO:
-                let _ = tokio::task::spawn_local(async move { service.call_method(0, rw).await });
-
-                if !header.flag.is_signal() {
-                    request_tx.send(body.into()).await?;
-                }
-                if !header.flag.is_eos() {
-                    working.insert(header.request_id, request_tx);
-                }
+            if !flag.is(SIGNAL) {
+                service_tx.send(frame).await?;
             }
         }
+        todo!();
     }
 
     async fn channel_writer(
         mut tcp_writer: BufWriter<tcp::WriteHalf<'_>>,
-        reply_rx: mpsc::Receiver<WriteInfo>,
+        mut reply_rx: mpsc::Receiver<ReplyFrame>,
     ) -> Result<(), ServerError> {
+        while let Some(frame) = reply_rx.recv().await {
+            tcp_writer
+                .write_all(&frame.header.encode_to_array())
+                .await?;
+            tcp_writer.write_all(&frame.body).await?;
+
+            debug!(write_frame = ?frame);
+        }
         todo!()
     }
 
