@@ -168,6 +168,7 @@ impl Channel {
                 .write_all(&frame.header.encode_to_array())
                 .await?;
             tcp_writer.write_all(&frame.body).await?;
+            tcp_writer.flush().await?;
 
             debug!(write_frame = ?frame);
         }
