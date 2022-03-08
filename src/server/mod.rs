@@ -1,19 +1,17 @@
 use std::sync::{Arc, RwLock};
 
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use tracing::info;
 
-use crate::server::channel::Channel;
-
-use self::{
-    error::ServerError,
-    service::{Service, ServiceTable},
-};
+use self::service::ServiceTable;
 
 pub mod channel;
 pub mod error;
-#[allow(dead_code)]
 pub mod service;
+
+pub use channel::Channel;
+pub use error::ServerError;
+pub use service::Service;
 
 pub struct Server {
     listener: TcpListener,
