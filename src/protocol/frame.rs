@@ -183,6 +183,10 @@ pub trait FrameFlag {
 
     fn clear(self, bit: Self::Bit) -> Self;
 
+    fn set_in_place(&mut self, bit: Self::Bit) -> &mut Self;
+
+    fn clear_in_place(&mut self, bit: Self::Bit) -> &mut Self;
+
     fn is(&self, bit: Self::Bit) -> bool;
 }
 
@@ -206,6 +210,16 @@ impl FrameFlag for RequestFlag {
     }
 
     fn clear(mut self, bit: Self::Bit) -> Self {
+        self.flag &= !(1 << (bit as i32));
+        self
+    }
+
+    fn set_in_place(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag |= 1 << (bit as i32);
+        self
+    }
+
+    fn clear_in_place(&mut self, bit: Self::Bit) -> &mut Self {
         self.flag &= !(1 << (bit as i32));
         self
     }
@@ -235,6 +249,16 @@ impl FrameFlag for ReplyFlag {
     }
 
     fn clear(mut self, bit: Self::Bit) -> Self {
+        self.flag &= !(1 << (bit as i32));
+        self
+    }
+
+    fn set_in_place(&mut self, bit: Self::Bit) -> &mut Self {
+        self.flag |= 1 << (bit as i32);
+        self
+    }
+
+    fn clear_in_place(&mut self, bit: Self::Bit) -> &mut Self {
         self.flag &= !(1 << (bit as i32));
         self
     }
