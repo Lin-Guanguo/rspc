@@ -1,9 +1,6 @@
-use bytes::Bytes;
 use tokio::sync::mpsc;
 
 use crate::protocol::frame::{FrameError, ReplyFrame, RequestFrame};
-
-use super::service::WriteInfo;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
