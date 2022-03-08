@@ -32,11 +32,11 @@ const CHANNEL_SERVICE_BUF_SIZE: usize = 8;
 
 pub struct Channel {
     stream: TcpStream,
-    service_table: Arc<RwLock<ServiceTable>>,
+    service_table: Rc<RefCell<ServiceTable>>,
 }
 
 impl Channel {
-    pub fn new(stream: TcpStream, service_table: Arc<RwLock<ServiceTable>>) -> Self {
+    pub fn new(stream: TcpStream, service_table: Rc<RefCell<ServiceTable>>) -> Self {
         Channel {
             stream,
             service_table,
@@ -97,7 +97,7 @@ impl Channel {
         mut request_rx: mpsc::Receiver<RequestFrame>,
         reply_tx: mpsc::Sender<ReplyFrame>,
         working: &RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>>,
-        service_table: &Arc<RwLock<ServiceTable>>,
+        service_table: &Rc<RefCell<ServiceTable>>,
     ) -> Result<(), ServerError> {
         while let Some(frame) = request_rx.recv().await {
             let RequestFrame {
@@ -120,10 +120,7 @@ impl Channel {
             // !FIRST && !EOS   get from record
             // !SIGNAL          send message
             let service_tx = if flag.is(FIRST) {
-                let service = service_table
-                    .read()
-                    .expect("Service Table RwLock read error")
-                    .get_service(method_id)?; // TODO: method_id Error handling
+                let service = service_table.borrow().get_service(method_id)?; // TODO: method_id Error handling
 
                 info!(
                     service = service.service_name(),
