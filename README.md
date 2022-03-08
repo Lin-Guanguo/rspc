@@ -9,5 +9,3 @@
 ## TODO
 
 * Channel增加握手阶段，丰富Channel类型，包括加密
-* ★ method_id -> Service implement
-* ServiceReaderWriter complete
