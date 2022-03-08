@@ -19,12 +19,12 @@ pub struct ReplyHeader {
     pub body_len: u32,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct RequestFlag {
     flag: u32,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct ReplyFlag {
     flag: u32,
 }
@@ -179,9 +179,9 @@ pub trait FrameFlag {
 
     type Bit;
 
-    fn set(&mut self, bit: Self::Bit) -> &mut Self;
+    fn set(self, bit: Self::Bit) -> Self;
 
-    fn clear(&mut self, bit: Self::Bit) -> &mut Self;
+    fn clear(self, bit: Self::Bit) -> Self;
 
     fn is(&self, bit: Self::Bit) -> bool;
 }
@@ -200,12 +200,12 @@ impl FrameFlag for RequestFlag {
 
     type Bit = RequestFlagBit;
 
-    fn set(&mut self, bit: Self::Bit) -> &mut Self {
+    fn set(mut self, bit: Self::Bit) -> Self {
         self.flag |= 1 << (bit as i32);
         self
     }
 
-    fn clear(&mut self, bit: Self::Bit) -> &mut Self {
+    fn clear(mut self, bit: Self::Bit) -> Self {
         self.flag &= !(1 << (bit as i32));
         self
     }
@@ -229,12 +229,12 @@ impl FrameFlag for ReplyFlag {
 
     type Bit = ReplyFlagBit;
 
-    fn set(&mut self, bit: Self::Bit) -> &mut Self {
+    fn set(mut self, bit: Self::Bit) -> Self {
         self.flag |= 1 << (bit as i32);
         self
     }
 
-    fn clear(&mut self, bit: Self::Bit) -> &mut Self {
+    fn clear(mut self, bit: Self::Bit) -> Self {
         self.flag &= !(1 << (bit as i32));
         self
     }

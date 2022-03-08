@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -6,7 +11,7 @@ use tokio::{
     sync::mpsc,
     task,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
     protocol::frame::{
@@ -16,7 +21,10 @@ use crate::{
     server::service::ServerReaderWriter,
 };
 
-use super::{error::ServerError, service::Service};
+use super::{
+    error::ServerError,
+    service::{Service, ServiceTable},
+};
 
 const CHANNEL_REPLY_BUF_SIZE: usize = 32;
 const CHANNEL_REQUEST_BUF_SIZE: usize = 32;
@@ -24,11 +32,15 @@ const CHANNEL_SERVICE_BUF_SIZE: usize = 8;
 
 pub struct Channel {
     stream: TcpStream,
+    service_table: Arc<RwLock<ServiceTable>>,
 }
 
 impl Channel {
-    pub fn new(stream: TcpStream) -> Self {
-        Channel { stream }
+    pub fn new(stream: TcpStream, service_table: Arc<RwLock<ServiceTable>>) -> Self {
+        Channel {
+            stream,
+            service_table,
+        }
     }
 
     pub async fn init(&mut self) {
@@ -47,7 +59,8 @@ impl Channel {
         let (request_tx, request_rx) = mpsc::channel(CHANNEL_REQUEST_BUF_SIZE);
 
         let reader = Self::channel_reader(tcp_reader, request_tx);
-        let request_handler = Self::request_handler(request_rx, reply_tx, &working);
+        let request_handler =
+            Self::request_handler(request_rx, reply_tx, &working, &self.service_table);
         let writer = Self::channel_writer(tcp_writer, reply_rx);
 
         let local = task::LocalSet::new();
@@ -84,6 +97,7 @@ impl Channel {
         mut request_rx: mpsc::Receiver<RequestFrame>,
         reply_tx: mpsc::Sender<ReplyFrame>,
         working: &RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>>,
+        service_table: &Arc<RwLock<ServiceTable>>,
     ) -> Result<(), ServerError> {
         while let Some(frame) = request_rx.recv().await {
             let RequestFrame {
@@ -106,13 +120,24 @@ impl Channel {
             // !FIRST && !EOS   get from record
             // !SIGNAL          send message
             let service_tx = if flag.is(FIRST) {
-                let service = Self::get_service(method_id);
+                let service = service_table
+                    .read()
+                    .expect("Service Table RwLock read error")
+                    .get_service(method_id)?; // TODO: method_id Error handling
+
+                info!(
+                    service = service.service_name(),
+                    method = service.method_name(),
+                    "call service method"
+                );
+
                 let (service_tx, service_rx) = mpsc::channel(CHANNEL_SERVICE_BUF_SIZE);
-                let rw = ServerReaderWriter::new(reply_tx.clone(), service_rx);
+                let rw = ServerReaderWriter::new(reply_tx.clone(), service_rx, request_id);
                 task::spawn_local(async move {
                     let service = service;
-                    service.call_method(0, rw).await
+                    service.call(rw).await
                 });
+
                 if !flag.is(EOS) {
                     let mut working = working.borrow_mut();
                     working.insert(request_id, service_tx.clone());
@@ -132,6 +157,7 @@ impl Channel {
             };
 
             if !flag.is(SIGNAL) {
+                // TODO: congestion handle, let one service method will not stuck whole server
                 service_tx.send(frame).await?;
             }
         }
@@ -150,10 +176,6 @@ impl Channel {
 
             debug!(write_frame = ?frame);
         }
-        todo!()
-    }
-
-    fn get_service(method_id: u32) -> Rc<dyn Service> {
         todo!()
     }
 }

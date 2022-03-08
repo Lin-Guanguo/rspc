@@ -18,4 +18,7 @@ pub enum ServerError {
 
     #[error("not FIRST request but can't search in record table")]
     ServiceRecordError(),
+
+    #[error("get service method with unregister id")]
+    ErrorServiceMethodId(),
 }

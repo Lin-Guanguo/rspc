@@ -1,3 +1,5 @@
+use std::{collections::HashMap, rc::Rc};
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::mpsc;
@@ -8,7 +10,9 @@ use super::error::ServerError;
 
 #[async_trait(?Send)]
 pub trait Service {
-    async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter);
+    async fn call_method(&self, fn_n: u32, stream: ServerReaderWriter);
+
+    fn service_name(&self) -> &'static str;
 
     fn method_names(&self) -> &'static [&'static str];
 
@@ -128,5 +132,58 @@ impl ServerReader {
     pub async fn read(&mut self) -> Option<Bytes> {
         let frame = self.reader_chan.recv().await;
         frame.map(|frame| frame.body)
+    }
+}
+
+#[derive(Default)]
+pub struct ServiceTable {
+    id_map: HashMap<u32, ServiceMethod>,
+}
+
+#[derive(Clone)]
+pub struct ServiceMethod(Rc<dyn Service>, u32);
+
+impl ServiceTable {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn register_service<S: 'static + Service>(&mut self, service: S) {
+        let service: Rc<dyn Service> = Rc::new(service);
+        let map_len = self.id_map.len();
+        for i in 0..service.num_of_methods() {
+            self.id_map.insert(
+                (map_len + i) as u32,
+                ServiceMethod(service.clone(), i as u32),
+            );
+        }
+    }
+
+    pub fn get_service(&self, method_id: u32) -> Result<ServiceMethod, ServerError> {
+        self.id_map
+            .get(&method_id)
+            .map(|m| m.clone())
+            .ok_or(ServerError::ErrorServiceMethodId())
+    }
+
+    pub fn list_service(&self) -> Vec<(&'static str, &'static str)> {
+        self.id_map
+            .iter()
+            .map(|(_, m)| (m.service_name(), m.method_name()))
+            .collect()
+    }
+}
+
+impl ServiceMethod {
+    pub async fn call(&self, stream: ServerReaderWriter) {
+        self.0.call_method(self.1, stream).await
+    }
+
+    pub fn method_name(&self) -> &'static str {
+        self.0.method_names()[self.1 as usize]
+    }
+
+    pub fn service_name(&self) -> &'static str {
+        self.0.service_name()
     }
 }

@@ -10,17 +10,22 @@ use crate::server::service::{ServerReaderWriter, Service};
 #[async_trait(?Send)]
 pub trait HelloServer {
     const METHOD_NAMES: [&'static str; 1] = ["hello"];
+    const SERVICE_NAME: &'static str = "HelloServer";
 
     async fn hello(&self, stream: ServerReaderWriter);
 }
 
 #[async_trait(?Send)]
 impl<S: HelloServer> Service for S {
-    async fn call_method(&self, fn_n: usize, stream: ServerReaderWriter) {
+    async fn call_method(&self, fn_n: u32, stream: ServerReaderWriter) {
         match fn_n {
             0 => self.hello(stream).await,
             n => panic!("error method id {}", n),
         }
+    }
+
+    fn service_name(&self) -> &'static str {
+        &Self::SERVICE_NAME
     }
 
     fn method_names(&self) -> &'static [&'static str] {
@@ -47,10 +52,18 @@ impl HelloServer for HelloServerImpl {
                 stream.write(0, r).await.unwrap();
             }
             stream
-                .write_last(0, String::from("end").into())
+                .write_last(0, format!("id={} end", t).into())
                 .await
                 .unwrap();
         });
+    }
+}
+
+impl HelloServerImpl {
+    pub fn new() -> Self {
+        Self {
+            share_states: Cell::new(1),
+        }
     }
 }
 
