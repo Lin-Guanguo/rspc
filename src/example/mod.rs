@@ -74,7 +74,7 @@ impl HelloServerImpl {
 }
 
 // should be generate
-#[async_trait]
+#[async_trait(?Send)]
 pub trait HelloClient {
     async fn hello_impl(&self, stream: ClientReaderWriter);
 
@@ -91,13 +91,13 @@ pub trait HelloClient {
 }
 
 // user implement
-pub struct HelloClientImpl {
-    channel: client::Channel,
+pub struct HelloClientImpl<'a> {
+    channel: &'a client::Channel,
     first_method_id: u32,
 }
 
-impl HelloClientImpl {
-    pub fn new(channel: client::Channel, first_method_id: u32) -> Self {
+impl<'a> HelloClientImpl<'a> {
+    pub fn new(channel: &'a client::Channel, first_method_id: u32) -> Self {
         Self {
             channel,
             first_method_id,
@@ -105,8 +105,8 @@ impl HelloClientImpl {
     }
 }
 
-#[async_trait]
-impl HelloClient for HelloClientImpl {
+#[async_trait(?Send)]
+impl<'a> HelloClient for HelloClientImpl<'a> {
     async fn hello_impl(&self, stream: ClientReaderWriter) {
         todo!()
     }
