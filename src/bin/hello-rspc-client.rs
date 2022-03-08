@@ -1,6 +1,10 @@
 use futures::join;
 use prost::Message;
-use rspc::protocol::frame::*;
+use rspc::{
+    client::{Channel, ClientError},
+    example::{HelloClient, HelloClientImpl},
+    protocol::frame::*,
+};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     sync::oneshot,
@@ -9,7 +13,7 @@ use tokio::{
 include!(concat!(env!("OUT_DIR"), "/rspc.hello.rs"));
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ClientError> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
         // will be written to stdout.
@@ -18,21 +22,9 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    // let mut msg = HelloRequest::default();
-    // msg.name = String::from("hello");
+    let channel = Channel::new("127.0.0.1:8080").await?;
+    let client = HelloClientImpl::new(channel, 0);
+    client.hello().await;
 
-    // let msg = msg.encode_to_vec();
-
-    // let chan = rspc::client::channel::Channel::new("127.0.0.1:8080")
-    //     .await
-    //     .unwrap();
-    // let (f, w) = chan.run();
-
-    // let r = join!(f, async move {
-    //     let (back_tx, back_rx) = oneshot::channel();
-    //     w.write(1, msg.into(), back_tx).await.unwrap();
-    //     let reply = back_rx.await.unwrap();
-    //     println!("{:?}", reply)
-    // });
-    // println!("{:?}", r)
+    Ok(())
 }

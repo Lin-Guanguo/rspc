@@ -5,7 +5,10 @@ use std::{
 
 use async_trait::async_trait;
 
-use crate::server::service::{ServerReaderWriter, Service};
+use crate::{
+    client::{self, service::ClientReaderWriter},
+    server::service::{ServerReaderWriter, Service},
+};
 
 // should be generate
 #[async_trait(?Send)]
@@ -67,5 +70,52 @@ impl HelloServerImpl {
         Self {
             share_states: Cell::new(1),
         }
+    }
+}
+
+// should be generate
+#[async_trait]
+pub trait HelloClient {
+    async fn hello_impl(&self, stream: ClientReaderWriter);
+
+    fn get_channel(&self) -> &'_ client::Channel;
+
+    fn get_first_method_id(&self) -> u32;
+
+    async fn hello(&self) {
+        let c = self.get_channel();
+        let m = self.get_first_method_id();
+        let rw = c.call_method(m);
+        self.hello_impl(rw).await
+    }
+}
+
+// user implement
+pub struct HelloClientImpl {
+    channel: client::Channel,
+    first_method_id: u32,
+}
+
+impl HelloClientImpl {
+    pub fn new(channel: client::Channel, first_method_id: u32) -> Self {
+        Self {
+            channel,
+            first_method_id,
+        }
+    }
+}
+
+#[async_trait]
+impl HelloClient for HelloClientImpl {
+    async fn hello_impl(&self, stream: ClientReaderWriter) {
+        todo!()
+    }
+
+    fn get_channel(&self) -> &'_ client::Channel {
+        &self.channel
+    }
+
+    fn get_first_method_id(&self) -> u32 {
+        self.first_method_id
     }
 }
