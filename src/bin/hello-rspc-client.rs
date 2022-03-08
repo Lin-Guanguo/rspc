@@ -18,21 +18,21 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let mut msg = HelloRequest::default();
-    msg.name = String::from("hello");
+    // let mut msg = HelloRequest::default();
+    // msg.name = String::from("hello");
 
-    let msg = msg.encode_to_vec();
+    // let msg = msg.encode_to_vec();
 
-    let chan = rspc::client::channel::Channel::new("127.0.0.1:8080")
-        .await
-        .unwrap();
-    let (f, w) = chan.run();
+    // let chan = rspc::client::channel::Channel::new("127.0.0.1:8080")
+    //     .await
+    //     .unwrap();
+    // let (f, w) = chan.run();
 
-    let r = join!(f, async move {
-        let (back_tx, back_rx) = oneshot::channel();
-        w.write(1, msg.into(), back_tx).await.unwrap();
-        let reply = back_rx.await.unwrap();
-        println!("{:?}", reply)
-    });
-    println!("{:?}", r)
+    // let r = join!(f, async move {
+    //     let (back_tx, back_rx) = oneshot::channel();
+    //     w.write(1, msg.into(), back_tx).await.unwrap();
+    //     let reply = back_rx.await.unwrap();
+    //     println!("{:?}", reply)
+    // });
+    // println!("{:?}", r)
 }
