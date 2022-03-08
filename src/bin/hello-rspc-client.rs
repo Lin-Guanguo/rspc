@@ -22,9 +22,11 @@ async fn main() -> Result<(), ClientError> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let channel = Channel::new("127.0.0.1:8080").await?;
+    let mut channel = Channel::new("127.0.0.1:8080").await?;
+    let (run, channel) = channel.run();
     let client = HelloClientImpl::new(&channel, 0);
-    client.hello().await;
+
+    join!(run, client.hello(), client.hello(), client.hello());
 
     Ok(())
 }

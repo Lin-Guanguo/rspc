@@ -4,9 +4,10 @@ use std::{
 };
 
 use async_trait::async_trait;
+use tracing::info;
 
 use crate::{
-    client::{self, service::ClientReaderWriter},
+    client::{self, ClientReaderWriter},
     server::service::{ServerReaderWriter, Service},
 };
 
@@ -78,7 +79,7 @@ impl HelloServerImpl {
 pub trait HelloClient {
     async fn hello_impl(&self, stream: ClientReaderWriter);
 
-    fn get_channel(&self) -> &'_ client::Channel;
+    fn get_channel(&self) -> &'_ client::RunningChannel;
 
     fn get_first_method_id(&self) -> u32;
 
@@ -92,12 +93,12 @@ pub trait HelloClient {
 
 // user implement
 pub struct HelloClientImpl<'a> {
-    channel: &'a client::Channel,
+    channel: &'a client::RunningChannel,
     first_method_id: u32,
 }
 
 impl<'a> HelloClientImpl<'a> {
-    pub fn new(channel: &'a client::Channel, first_method_id: u32) -> Self {
+    pub fn new(channel: &'a client::RunningChannel, first_method_id: u32) -> Self {
         Self {
             channel,
             first_method_id,
@@ -107,11 +108,15 @@ impl<'a> HelloClientImpl<'a> {
 
 #[async_trait(?Send)]
 impl<'a> HelloClient for HelloClientImpl<'a> {
-    async fn hello_impl(&self, stream: ClientReaderWriter) {
-        todo!()
+    async fn hello_impl(&self, mut stream: ClientReaderWriter) {
+        stream.write("hello".into()).await.unwrap();
+        stream.write_last("你好".into()).await.unwrap();
+        while let Some(reply) = stream.read().await {
+            info!(reply = ?reply)
+        }
     }
 
-    fn get_channel(&self) -> &'_ client::Channel {
+    fn get_channel(&self) -> &'_ client::RunningChannel {
         &self.channel
     }
 
