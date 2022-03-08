@@ -52,15 +52,11 @@ impl Channel {
         let tcp_reader = BufReader::new(tcp_reader);
         let tcp_writer = BufWriter::new(tcp_writer);
 
-        // working service request stream record
-        let working: RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>> = RefCell::default();
-
         let (reply_tx, reply_rx) = mpsc::channel(CHANNEL_REPLY_BUF_SIZE);
         let (request_tx, request_rx) = mpsc::channel(CHANNEL_REQUEST_BUF_SIZE);
 
         let reader = Self::channel_reader(tcp_reader, request_tx);
-        let request_handler =
-            Self::request_handler(request_rx, reply_tx, &working, &self.service_table);
+        let request_handler = Self::request_handler(request_rx, reply_tx, &self.service_table);
         let writer = Self::channel_writer(tcp_writer, reply_rx);
 
         let local = task::LocalSet::new();
@@ -96,9 +92,11 @@ impl Channel {
     async fn request_handler(
         mut request_rx: mpsc::Receiver<RequestFrame>,
         reply_tx: mpsc::Sender<ReplyFrame>,
-        working: &RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>>,
         service_table: &Rc<RefCell<ServiceTable>>,
     ) -> Result<(), ServerError> {
+        // working service request stream record
+        let working: RefCell<HashMap<u32, mpsc::Sender<RequestFrame>>> = RefCell::default();
+
         while let Some(frame) = request_rx.recv().await {
             let RequestFrame {
                 header:
