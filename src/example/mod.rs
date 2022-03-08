@@ -7,6 +7,7 @@ use async_trait::async_trait;
 
 use crate::server::service::{ServerReaderWriter, Service};
 
+// should be generate
 #[async_trait(?Send)]
 pub trait HelloServer {
     const METHOD_NAMES: [&'static str; 1] = ["hello"];
@@ -15,6 +16,7 @@ pub trait HelloServer {
     async fn hello(&self, stream: ServerReaderWriter);
 }
 
+// should be generate
 #[async_trait(?Send)]
 impl<S: HelloServer> Service for S {
     async fn call_method(&self, fn_n: u32, stream: ServerReaderWriter) {
@@ -37,6 +39,7 @@ impl<S: HelloServer> Service for S {
     }
 }
 
+// user implement
 pub struct HelloServerImpl {
     share_states: Cell<i32>,
 }
@@ -66,5 +69,3 @@ impl HelloServerImpl {
         }
     }
 }
-
-pub struct HelloClient {}
