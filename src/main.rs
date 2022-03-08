@@ -5,6 +5,7 @@ use rspc::{
     protocol::frame::{FrameHeader, RequestHeader},
     server::{error::ServerError, Server},
 };
+use tokio::task;
 
 include!(concat!(env!("OUT_DIR"), "/rspc.hello.rs"));
 
@@ -24,6 +25,21 @@ async fn main() -> Result<(), ServerError> {
     server.register_service(s1);
     server.register_service(s2);
     println!("{:?}", server.list_service());
+
+    let local = task::LocalSet::new();
+    local
+        .run_until(async move {
+            let mut server = server;
+            loop {
+                let c = server.accept().await?;
+                let _ = task::spawn_local(async move {
+                    let mut c = c;
+                    c.run().await
+                });
+            }
+            Result::<(), ServerError>::Ok(())
+        })
+        .await?;
 
     Ok(())
 }
