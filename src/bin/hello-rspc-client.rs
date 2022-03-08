@@ -1,4 +1,4 @@
-use futures::join;
+use futures::{join, try_join};
 use prost::Message;
 use rspc::{
     client::{Channel, ClientError},
@@ -25,8 +25,16 @@ async fn main() -> Result<(), ClientError> {
     let mut channel = Channel::new("127.0.0.1:8080").await?;
     let (run, channel) = channel.run();
     let client = HelloClientImpl::new(&channel, 0);
-
-    join!(run, client.hello(), client.hello(), client.hello());
+    let client2 = HelloClientImpl::new(&channel, 1);
+    join!(
+        run,
+        client.hello(),
+        client.hello(),
+        client.hello(),
+        client2.hello(),
+        client2.hello()
+    )
+    .0?;
 
     Ok(())
 }

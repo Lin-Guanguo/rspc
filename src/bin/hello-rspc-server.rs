@@ -1,5 +1,11 @@
+use rspc::{
+    example::HelloServerImpl,
+    server::{Server, ServerError},
+};
+use tokio::task;
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), ServerError> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
         // will be written to stdout.
@@ -8,8 +14,27 @@ async fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    // let mut server = rspc::server::Server::new(8080);
-    // server.register_service(1, rspc::example::hello_service);
-    // let r = server.run().await;
-    // println!("{:?}", r);
+    let mut server = Server::new(8080).await?;
+    let s1 = HelloServerImpl::new();
+    let s2 = HelloServerImpl::new();
+    server.register_service(s1);
+    server.register_service(s2);
+    println!("{:?}", server.list_service());
+
+    let local = task::LocalSet::new();
+    local
+        .run_until(async move {
+            let mut server = server;
+            loop {
+                let c = server.accept().await?;
+                let _ = task::spawn_local(async move {
+                    let mut c = c;
+                    c.run().await
+                });
+            }
+            Result::<(), ServerError>::Ok(())
+        })
+        .await?;
+
+    Ok(())
 }
