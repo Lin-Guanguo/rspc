@@ -82,7 +82,7 @@ impl Channel {
                 body: body.into(),
             };
 
-            debug!(read_frame = ?frame);
+            debug!(read_frame = %frame);
 
             request_tx.send(frame).await?;
         }
@@ -170,7 +170,7 @@ impl Channel {
             tcp_writer.write_all(&frame.body).await?;
             tcp_writer.flush().await?;
 
-            debug!(write_frame = ?frame);
+            debug!(write_frame = %frame);
         }
         todo!()
     }

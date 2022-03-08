@@ -1,3 +1,5 @@
+use std::fmt::write;
+
 use bytes::{Buf, BufMut, Bytes};
 
 pub const REQUEST_FRAME_HEADER_LEN: usize = 16;
@@ -265,5 +267,31 @@ impl FrameFlag for ReplyFlag {
 
     fn is(&self, bit: Self::Bit) -> bool {
         (self.flag & (1 << (bit as i32))) != 0
+    }
+}
+
+impl std::fmt::Display for RequestFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "RequestFrame{{ request_id={}, flag={}, method_id={}, body_len={} }}",
+            self.header.request_id,
+            self.header.flag.flag,
+            self.header.method_id,
+            self.header.body_len
+        )
+    }
+}
+
+impl std::fmt::Display for ReplyFrame {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "RequestFrame{{ request_id={}, flag={}, status_code={}, body_len={} }}",
+            self.header.request_id,
+            self.header.flag.flag,
+            self.header.status_code,
+            self.header.body_len
+        )
     }
 }
