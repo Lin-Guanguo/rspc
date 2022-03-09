@@ -1,8 +1,41 @@
+use std::cell::Cell;
+
+use async_trait::async_trait;
 use rspc::{
-    example::HelloServerImpl,
-    server::{Server, ServerError},
+    example::HelloServer,
+    server::{service::ServerReaderWriter, Server, ServerError},
 };
 use tokio::task;
+
+pub struct HelloServerImpl {
+    share_states: Cell<i32>,
+}
+
+#[async_trait(?Send)]
+impl HelloServer for HelloServerImpl {
+    async fn hello(&self, stream: ServerReaderWriter) {
+        let t = self.share_states.get();
+        self.share_states.set(t + 1);
+        tokio::spawn(async move {
+            let mut stream = stream;
+            while let Some(r) = stream.read().await {
+                stream.write(0, r).await.unwrap();
+            }
+            stream
+                .write_last(0, format!("id={} end", t).into())
+                .await
+                .unwrap();
+        });
+    }
+}
+
+impl HelloServerImpl {
+    pub fn new() -> Self {
+        Self {
+            share_states: Cell::new(1),
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), ServerError> {

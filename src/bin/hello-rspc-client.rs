@@ -1,16 +1,45 @@
-use futures::{join, try_join};
-use prost::Message;
-use rspc::{
-    client::{Channel, ClientError},
-    example::{HelloClient, HelloClientImpl},
-    protocol::frame::*,
-};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    sync::oneshot,
-};
+use std::cell::Cell;
 
-include!(concat!(env!("OUT_DIR"), "/rspc.hello.rs"));
+use async_trait::async_trait;
+use futures::join;
+use rspc::{
+    client::{self, Channel, ClientError, ClientReaderWriter},
+    example::HelloClient,
+};
+use tracing::info;
+
+pub struct HelloClientImpl<'a> {
+    channel: &'a client::RunningChannel,
+    first_method_id: u32,
+}
+
+impl<'a> HelloClientImpl<'a> {
+    pub fn new(channel: &'a client::RunningChannel, first_method_id: u32) -> Self {
+        Self {
+            channel,
+            first_method_id,
+        }
+    }
+}
+
+#[async_trait(?Send)]
+impl<'a> HelloClient for HelloClientImpl<'a> {
+    async fn hello_impl(&self, mut stream: ClientReaderWriter) {
+        stream.write("hello".into()).await.unwrap();
+        stream.write_last("你好".into()).await.unwrap();
+        while let Some(reply) = stream.read().await {
+            info!(reply = ?reply)
+        }
+    }
+
+    fn get_channel(&self) -> &client::RunningChannel {
+        &self.channel
+    }
+
+    fn get_first_method_id(&self) -> u32 {
+        self.first_method_id
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
