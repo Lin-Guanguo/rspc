@@ -11,6 +11,7 @@ pub mod service;
 
 pub use channel::Channel;
 pub use error::ServerError;
+pub use service::ServerReaderWriter;
 pub use service::Service;
 
 pub struct Server {
