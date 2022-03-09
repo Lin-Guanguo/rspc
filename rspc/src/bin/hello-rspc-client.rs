@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 use async_trait::async_trait;
 use futures::join;
 use rspc::{
@@ -51,7 +49,7 @@ async fn main() -> Result<(), ClientError> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    let mut channel = Channel::new("127.0.0.1:8080").await?;
+    let channel = Channel::new("127.0.0.1:8080").await?;
     let (run, channel) = channel.run();
     let client = HelloClientImpl::new(&channel, 0);
     let client2 = HelloClientImpl::new(&channel, 1);

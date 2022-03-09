@@ -4,11 +4,10 @@ use std::{
     rc::Rc,
 };
 
-use futures::TryFutureExt;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf, ReadHalf, WriteHalf},
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
         TcpStream, ToSocketAddrs,
     },
     sync::mpsc,
@@ -134,11 +133,11 @@ impl Channel {
                 header:
                     ReplyHeader {
                         request_id,
-                        status_code,
+                        status_code: _, // TODO:
                         ref flag,
-                        body_len,
+                        body_len: _,
                     },
-                ref body,
+                body: _,
             } = frame;
 
             use ReplyFlagBit::*;

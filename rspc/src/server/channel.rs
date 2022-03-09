@@ -1,9 +1,4 @@
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    rc::Rc,
-    sync::{Arc, RwLock},
-};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -21,10 +16,7 @@ use crate::{
     server::service::ServerReaderWriter,
 };
 
-use super::{
-    error::ServerError,
-    service::{Service, ServiceTable},
-};
+use super::{error::ServerError, service::ServiceTable};
 
 const CHANNEL_REPLY_BUF_SIZE: usize = 32;
 const CHANNEL_REQUEST_BUF_SIZE: usize = 32;
@@ -60,7 +52,7 @@ impl Channel {
         let writer = Self::channel_writer(tcp_writer, reply_rx);
 
         let local = task::LocalSet::new();
-        let ret = local
+        let _ = local
             .run_until(futures::future::try_join3(reader, request_handler, writer))
             .await?;
 
@@ -104,9 +96,9 @@ impl Channel {
                         request_id,
                         method_id,
                         ref flag,
-                        body_len,
+                        body_len: _,
                     },
-                ref body,
+                body: _,
             } = frame;
 
             use RequestFlagBit::*;

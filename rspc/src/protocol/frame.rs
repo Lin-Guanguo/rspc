@@ -1,5 +1,3 @@
-use std::fmt::write;
-
 use bytes::{Buf, BufMut, Bytes};
 
 pub const REQUEST_FRAME_HEADER_LEN: usize = 16;

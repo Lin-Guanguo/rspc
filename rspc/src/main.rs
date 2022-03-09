@@ -1,9 +1,4 @@
-use bytes::Bytes;
-use prost::Message;
 use rspc::server::ServerError;
-use tokio::task;
-
-include!(concat!(env!("OUT_DIR"), "/rspc.hello.rs"));
 
 #[tokio::main]
 async fn main() -> Result<(), ServerError> {

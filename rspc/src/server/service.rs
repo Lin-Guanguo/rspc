@@ -31,11 +31,8 @@ impl ServerReaderWriter {
         request_id: u32,
     ) -> Self {
         Self {
-            writer: ServerWriter {
-                writer_chan,
-                request_id,
-            },
-            reader: ServerReader { reader_chan },
+            writer: ServerWriter::new(writer_chan, request_id),
+            reader: ServerReader::new(reader_chan),
         }
     }
 
