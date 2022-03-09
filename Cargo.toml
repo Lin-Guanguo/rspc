@@ -2,5 +2,6 @@
 
 members = [
   "rspc",
+  "rspc-macros",
 ]
 
