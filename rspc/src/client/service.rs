@@ -5,6 +5,12 @@ use crate::protocol::frame::*;
 
 use super::ClientError;
 
+pub trait ClientStub {
+    fn channel(&self) -> &'_ crate::client::RunningChannel;
+
+    fn first_method_id(&self) -> u32;
+}
+
 pub struct ClientReaderWriter {
     writer: ClientWriter,
     reader: ClientReader,
@@ -35,7 +41,7 @@ impl ClientReaderWriter {
         self.writer.write_complete().await
     }
 
-    pub async fn read(&mut self) -> Option<Bytes> {
+    pub async fn read(&mut self) -> Option<(u32, Bytes)> {
         self.reader.read().await
     }
 
@@ -53,9 +59,9 @@ impl ClientReader {
         Self { reader_chan }
     }
 
-    pub async fn read(&mut self) -> Option<Bytes> {
+    pub async fn read(&mut self) -> Option<(u32, Bytes)> {
         let frame = self.reader_chan.recv().await;
-        frame.map(|frame| frame.body)
+        frame.map(|frame| (frame.header.status_code, frame.body))
     }
 }
 

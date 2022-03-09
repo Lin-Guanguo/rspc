@@ -1,41 +1,39 @@
-use async_trait::async_trait;
 use futures::join;
-use rspc::{
-    client::{self, Channel, ClientError, ClientReaderWriter},
-    example::HelloClient,
-};
-use tracing::info;
+use rspc::client::{Channel, ClientError, ClientStub};
 
-pub struct HelloClientImpl<'a> {
-    channel: &'a client::RunningChannel,
+#[rspc_macros::rspc_client(hello, stream hello_stream)]
+pub struct HelloClient<'a> {
+    channel: &'a rspc::client::RunningChannel,
     first_method_id: u32,
 }
 
-impl<'a> HelloClientImpl<'a> {
-    pub fn new(channel: &'a client::RunningChannel, first_method_id: u32) -> Self {
+impl<'a> ClientStub for HelloClient<'a> {
+    fn channel(&self) -> &'_ rspc::client::RunningChannel {
+        self.channel
+    }
+
+    fn first_method_id(&self) -> u32 {
+        self.first_method_id
+    }
+}
+
+impl<'a> HelloClient<'a> {
+    pub fn new(channel: &'a rspc::client::RunningChannel, first_method_id: u32) -> Self {
         Self {
             channel,
             first_method_id,
         }
     }
-}
 
-#[async_trait(?Send)]
-impl<'a> HelloClient for HelloClientImpl<'a> {
-    async fn hello_impl(&self, mut stream: ClientReaderWriter) {
-        stream.write("hello".into()).await.unwrap();
-        stream.write_last("你好".into()).await.unwrap();
-        while let Some(reply) = stream.read().await {
-            info!(reply = ?reply)
-        }
-    }
-
-    fn get_channel(&self) -> &client::RunningChannel {
-        &self.channel
-    }
-
-    fn get_first_method_id(&self) -> u32 {
-        self.first_method_id
+    async fn hello_stream_impl(&self, mut rw: rspc::client::ClientReaderWriter) {
+        rw.write("stream hello1".into()).await.unwrap();
+        rw.write("stream hello2".into()).await.unwrap();
+        let r1 = rw.read().await;
+        let r2 = rw.read().await;
+        let r3 = rw.read().await;
+        println!("reply1 {:?}", r1);
+        println!("reply2 {:?}", r2);
+        println!("reply3 {:?}", r3);
     }
 }
 
@@ -51,17 +49,19 @@ async fn main() -> Result<(), ClientError> {
 
     let channel = Channel::new("127.0.0.1:8080").await?;
     let (run, channel) = channel.run();
-    let client = HelloClientImpl::new(&channel, 0);
-    let client2 = HelloClientImpl::new(&channel, 1);
-    join!(
-        run,
-        client.hello(),
-        client.hello(),
-        client.hello(),
-        client2.hello(),
-        client2.hello()
-    )
-    .0?;
+    let client = HelloClient::new(&channel, 0);
+    let client2 = HelloClient::new(&channel, 1);
 
+    let f1 = client2.hello_stream();
+    let f2 = async {
+        let t = client.hello("hello".into()).await;
+        println!("{:?}", t)
+    };
+    let f3 = async {
+        let t = client2.hello("hello".into()).await;
+        println!("{:?}", t)
+    };
+
+    join!(run, f1, f2, f3).0?;
     Ok(())
 }

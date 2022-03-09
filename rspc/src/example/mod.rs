@@ -34,19 +34,3 @@ impl<S: HelloServer> Service for S {
         1
     }
 }
-
-#[async_trait(?Send)]
-pub trait HelloClient {
-    async fn hello_impl(&self, stream: ClientReaderWriter);
-
-    fn get_channel(&self) -> &client::RunningChannel;
-
-    fn get_first_method_id(&self) -> u32;
-
-    async fn hello(&self) {
-        let c = self.get_channel();
-        let m = self.get_first_method_id();
-        let rw = c.call_method(m);
-        self.hello_impl(rw).await
-    }
-}

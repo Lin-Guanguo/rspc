@@ -6,3 +6,4 @@ pub use channel::Channel;
 pub use channel::RunningChannel;
 pub use error::ClientError;
 pub use service::ClientReaderWriter;
+pub use service::ClientStub;
