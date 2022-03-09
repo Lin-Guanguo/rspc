@@ -8,6 +8,8 @@ edition = "2021"
 [lib]
 proc-macro = true
 
+rspc = { path = "../rpsc" }
+
 [dependencies]
 syn = "1"
 quote = "1"

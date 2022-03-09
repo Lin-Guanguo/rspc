@@ -22,5 +22,7 @@ bytes = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
+rspc-macros = { path = "../rspc-macros"}
+
 [build-dependencies]
 prost-build = "0.9"
