@@ -6,7 +6,7 @@ use tokio::{
     sync::mpsc,
     task,
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     protocol::frame::{
@@ -122,7 +122,11 @@ impl Channel {
                 let rw = ServerReaderWriter::new(reply_tx.clone(), service_rx, request_id);
                 task::spawn_local(async move {
                     let service = service;
-                    service.call(rw).await
+                    let r = service.call(rw).await;
+                    if let Err(_) = r {
+                        // TODO: better error handling
+                        error!("call method error");
+                    }
                 });
 
                 if !flag.is(EOS) {

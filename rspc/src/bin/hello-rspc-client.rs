@@ -27,7 +27,7 @@ impl<'a> HelloClient<'a> {
 
     async fn hello_stream_impl(&self, mut rw: rspc::client::ClientReaderWriter) {
         rw.write("stream hello1".into()).await.unwrap();
-        rw.write("stream hello2".into()).await.unwrap();
+        rw.write_last("stream hello2".into()).await.unwrap();
         let r1 = rw.read().await;
         let r2 = rw.read().await;
         let r3 = rw.read().await;
@@ -50,16 +50,16 @@ async fn main() -> Result<(), ClientError> {
     let channel = Channel::new("127.0.0.1:8080").await?;
     let (run, channel) = channel.run();
     let client = HelloClient::new(&channel, 0);
-    let client2 = HelloClient::new(&channel, 1);
+    let client2 = HelloClient::new(&channel, 2);
 
     let f1 = client2.hello_stream();
     let f2 = async {
         let t = client.hello("hello".into()).await;
-        println!("{:?}", t)
+        println!("normal reply {:?}", t)
     };
     let f3 = async {
         let t = client2.hello("hello".into()).await;
-        println!("{:?}", t)
+        println!("normal reply {:?}", t)
     };
 
     join!(run, f1, f2, f3).0?;

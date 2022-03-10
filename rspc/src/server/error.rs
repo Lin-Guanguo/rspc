@@ -21,4 +21,10 @@ pub enum ServerError {
 
     #[error("get service method with unregister id")]
     ErrorServiceMethodId(),
+
+    #[error("normal rpc method run error")]
+    NormalRpcMethodError(),
+
+    #[error("stream rpc method run error")]
+    StreamRpcMethodError(),
 }

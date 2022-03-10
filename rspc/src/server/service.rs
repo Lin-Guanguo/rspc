@@ -10,13 +10,13 @@ use super::error::ServerError;
 
 #[async_trait(?Send)]
 pub trait Service {
-    async fn call_method(&self, fn_n: u32, stream: ServerReaderWriter);
+    async fn call_method(&self, fn_n: u32, stream: ServerReaderWriter) -> Result<(), ServerError>;
 
     fn service_name(&self) -> &'static str;
 
-    fn method_names(&self) -> &'static [&'static str];
+    fn methods_name(&self) -> &'static [&'static str];
 
-    fn num_of_methods(&self) -> usize;
+    fn methods_len(&self) -> usize;
 }
 
 pub struct ServerReaderWriter {
@@ -148,7 +148,7 @@ impl ServiceTable {
     pub fn register_service<S: 'static + Service>(&mut self, service: S) {
         let service: Rc<dyn Service> = Rc::new(service);
         let map_len = self.id_map.len();
-        for i in 0..service.num_of_methods() {
+        for i in 0..service.methods_len() {
             self.id_map.insert(
                 (map_len + i) as u32,
                 ServiceMethod(service.clone(), i as u32),
@@ -172,12 +172,12 @@ impl ServiceTable {
 }
 
 impl ServiceMethod {
-    pub async fn call(&self, stream: ServerReaderWriter) {
+    pub async fn call(&self, stream: ServerReaderWriter) -> Result<(), ServerError> {
         self.0.call_method(self.1, stream).await
     }
 
     pub fn method_name(&self) -> &'static str {
-        self.0.method_names()[self.1 as usize]
+        self.0.methods_name()[self.1 as usize]
     }
 
     pub fn service_name(&self) -> &'static str {
