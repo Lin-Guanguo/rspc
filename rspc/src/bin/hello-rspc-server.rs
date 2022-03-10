@@ -5,48 +5,9 @@ use rspc::server::{service::ServerReaderWriter, Server, ServerError};
 use tokio::task;
 
 // macros generate template
+#[rspc_macros::rspc_server(hello, stream hello_stream)]
 pub struct HelloServer {
     share_states: Cell<i32>,
-}
-
-#[async_trait::async_trait(?Send)]
-impl rspc::server::Service for HelloServer {
-    async fn call_method(
-        &self,
-        fn_n: u32,
-        mut stream: rspc::server::ServerReaderWriter,
-    ) -> Result<(), rspc::server::ServerError> {
-        if fn_n < 1 {
-            if let Some(request) = stream.read().await {
-                let reply = match fn_n {
-                    0 => self.hello(request).await,
-                    _ => return Err(rspc::server::ServerError::NormalRpcMethodError()),
-                };
-
-                stream.write(reply.0, reply.1).await?;
-                Ok(())
-            } else {
-                Err(rspc::server::ServerError::NormalRpcMethodError())
-            }
-        } else {
-            match fn_n {
-                1 => self.hello_stream(stream).await,
-                _ => Err(rspc::server::ServerError::StreamRpcMethodError()),
-            }
-        }
-    }
-
-    fn service_name(&self) -> &'static str {
-        "HelloServer"
-    }
-
-    fn methods_name(&self) -> &'static [&'static str] {
-        &["hello", "hello_stream"]
-    }
-
-    fn methods_len(&self) -> usize {
-        2
-    }
 }
 
 impl HelloServer {
