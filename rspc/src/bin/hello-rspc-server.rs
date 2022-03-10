@@ -1,7 +1,6 @@
 use std::cell::Cell;
 
-use async_trait::async_trait;
-use rspc::server::{service::ServerReaderWriter, Server, ServerError};
+use rspc::server::{Server, ServerError};
 use tokio::task;
 
 // macros generate template

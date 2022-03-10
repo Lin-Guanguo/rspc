@@ -1,12 +1,10 @@
 extern crate proc_macro;
-use proc_macro::{TokenStream, TokenTree};
-use quote::{format_ident, quote, ToTokens};
+use proc_macro::TokenStream;
+use quote::{format_ident, quote};
 use syn::{
     self,
     parse::{Parse, ParseStream},
-    parse_macro_input,
-    punctuated::Punctuated,
-    DeriveInput, Ident, Token,
+    parse_macro_input, DeriveInput, Ident, Token,
 };
 
 #[derive(Debug)]
